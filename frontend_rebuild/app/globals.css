@@ -1,0 +1,177 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Editorial warm palette mapped to shadcn-style HSL for primitives */
+    --background: 36 33% 97%;            /* cream-100 #FAF7F2 */
+    --foreground: 0 0% 10%;              /* ink-900 #1A1A1A */
+    --card: 0 0% 100%;                   /* paper */
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 167 100% 20%;            /* accent-500 #006A4E (Bangladesh green) */
+    --primary-foreground: 36 33% 97%;
+    --secondary: 36 27% 92%;             /* cream-200 #F4EFE5 */
+    --secondary-foreground: 0 0% 10%;
+    --muted: 36 27% 92%;                 /* cream-200 */
+    --muted-foreground: 0 0% 42%;        /* ink-500 #6B6B6B */
+    --destructive: 8 75% 45%;            /* ember-500 #C8341B */
+    --destructive-foreground: 0 0% 100%;
+    --border: 35 30% 87%;                /* rule #E8E2D6 */
+    --input: 35 30% 87%;
+    --ring: 167 100% 20%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 7%;
+    --foreground: 36 33% 95%;
+    --card: 0 0% 10%;
+    --card-foreground: 36 33% 95%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 36 33% 95%;
+    --primary: 158 64% 50%;              /* lighter green for dark mode */
+    --primary-foreground: 0 0% 7%;
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 36 33% 95%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 65%;
+    --destructive: 8 75% 55%;
+    --destructive-foreground: 0 0% 7%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 158 64% 50%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  /* Editorial selection */
+  ::selection {
+    background: hsl(var(--primary) / 0.15);
+    color: hsl(var(--foreground));
+  }
+
+  /* Focus rings — visible, editorial */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Editorial container — used by hero/sections, NOT page chrome */
+  .editorial-container {
+    @apply mx-auto w-full max-w-[1440px] px-5 md:px-8 lg:px-12;
+  }
+
+  /* Typographic refinements */
+  .display-balance {
+    text-wrap: balance;
+  }
+  .display-pretty {
+    text-wrap: pretty;
+  }
+
+  /* Hairline rule used heavily in editorial layout */
+  .hairline {
+    @apply h-px w-full bg-rule;
+  }
+  .hairline-v {
+    @apply h-full w-px bg-rule;
+  }
+
+  /* Small-caps eyebrow label */
+  .eyebrow {
+    @apply text-[0.6875rem] font-medium uppercase tracking-[0.18em] text-ink-500;
+  }
+
+  /* Editorial link underline (animated) */
+  .editorial-link {
+    @apply relative inline-block text-ink transition-colors;
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 100% 1px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .editorial-link:hover {
+    background-size: 0% 1px;
+    background-position: 100% 100%;
+  }
+
+  /* Skeleton shimmer (used on loading states) */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted) / 0.6) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+
+  /* Bengali typography accent */
+  .bengali {
+    @apply font-bengali;
+  }
+
+  /* Date stamps — mono style for time, tabular */
+  .date-stamp {
+    @apply font-mono text-[0.75rem] uppercase tracking-wider text-ink-500;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Editorial drop cap (optional, used sparingly) */
+  .drop-cap::first-letter {
+    @apply font-display;
+    float: left;
+    font-size: 4.5rem;
+    line-height: 0.85;
+    margin-right: 0.5rem;
+    margin-top: 0.25rem;
+    color: hsl(var(--foreground));
+  }
+}
