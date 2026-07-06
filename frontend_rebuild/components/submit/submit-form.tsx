@@ -7,6 +7,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Copy,
   ImageIcon,
   LinkIcon,
   MapPin,
@@ -33,13 +34,17 @@ interface FormState {
   organizer_social_link: string;
   // Event
   title: string;
+  title_bn: string;
   description: string;
+  description_bn: string;
   start_date: string;
   start_time: string;
   end_date: string;
   end_time: string;
   venue_name: string;
+  venue_name_bn: string;
   area_details: string;
+  area_details_bn: string;
   city: string;
   sub_area: string;
   maps_link: string;
@@ -60,13 +65,17 @@ const INITIAL: FormState = {
   organizer_email: "",
   organizer_social_link: "",
   title: "",
+  title_bn: "",
   description: "",
+  description_bn: "",
   start_date: "",
   start_time: "",
   end_date: "",
   end_time: "",
   venue_name: "",
+  venue_name_bn: "",
   area_details: "",
+  area_details_bn: "",
   city: "Dhaka",
   sub_area: "",
   maps_link: "",
@@ -106,6 +115,15 @@ export function SubmitForm() {
       const next = arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
       return { ...f, [key]: next };
     });
+  }
+
+  /**
+   * Copy English value into the corresponding Bangla field. Useful when
+   * organizers don't have a Bangla translation handy — they can paste their
+   * English text in and our editors will polish it later.
+   */
+  function copyEnToBn(enKey: keyof FormState, bnKey: keyof FormState) {
+    setForm((f) => ({ ...f, [bnKey]: f[enKey] as string }));
   }
 
   function validateStep(s: number): boolean {
@@ -157,7 +175,9 @@ export function SubmitForm() {
     setSubmitting(true);
     const res = await submitEvent({
       title: form.title,
+      title_bn: form.title_bn.trim() || undefined,
       description: form.description,
+      description_bn: form.description_bn.trim() || undefined,
       start_date: form.start_date,
       start_time: form.start_time,
       end_date: form.end_date || undefined,
@@ -165,7 +185,9 @@ export function SubmitForm() {
       city: form.city,
       sub_area: form.sub_area,
       venue_name: form.venue_name,
+      venue_name_bn: form.venue_name_bn.trim() || undefined,
       area_details: form.area_details,
+      area_details_bn: form.area_details_bn.trim() || undefined,
       maps_link: form.maps_link || undefined,
       categories: form.categories,
       audience_tags: form.audience_tags,
@@ -245,6 +267,11 @@ export function SubmitForm() {
               );
             })}
           </ol>
+
+          <p className="mt-8 text-xs text-ink-500 leading-relaxed">
+            Bangla fields are optional. Leave them empty and our editors will fill them in
+            before publishing for our default Bangla audience.
+          </p>
         </div>
       </aside>
 
@@ -252,7 +279,7 @@ export function SubmitForm() {
       <div className="md:col-span-8">
         <div className="rounded-lg border border-rule bg-paper p-6 md:p-10 shadow-paper">
           {step === 1 && <Step1 form={form} errors={errors} update={update} />}
-          {step === 2 && <Step2 form={form} errors={errors} update={update} />}
+          {step === 2 && <Step2 form={form} errors={errors} update={update} copyEnToBn={copyEnToBn} />}
           {step === 3 && <Step3 form={form} errors={errors} update={update} toggleArrayValue={toggleArrayValue} />}
           {step === 4 && <Step4 form={form} />}
 
@@ -344,7 +371,9 @@ function Step1({ form, errors, update }: StepProps) {
 }
 
 // ─── Step 2 — event ─────────────────────────────────────────────
-function Step2({ form, errors, update }: StepProps) {
+function Step2({ form, errors, update, copyEnToBn }: StepProps & {
+  copyEnToBn: (en: keyof FormState, bn: keyof FormState) => void;
+}) {
   return (
     <div className="space-y-6">
       <header>
@@ -353,22 +382,47 @@ function Step2({ form, errors, update }: StepProps) {
         <p className="mt-1 text-sm text-ink-500">Title, date, venue — the basics people need to know.</p>
       </header>
 
-      <Field label="Event name" error={errors.title} required>
-        <Input
-          value={form.title}
-          onChange={(e) => update("title", e.target.value)}
-          placeholder="e.g. Hand-Thrown Pottery: A Weekend with the Wheel"
-        />
-      </Field>
+      {/* ── TITLE — EN/BN pair ──────────────────────────────────── */}
+      <BilingualPair
+        enKey="title"
+        bnKey="title_bn"
+        form={form}
+        errors={errors}
+        update={update}
+        copyEnToBn={copyEnToBn}
+        enLabel="Event name"
+        bnLabel="Event name (বাংলা) — optional"
+        enRequired
+        enPlaceholder="e.g. Hand-Thrown Pottery: A Weekend with the Wheel"
+        bnPlaceholder="ঐচ্ছিক — পরে এডিটর পূরণ করতে পারেন"
+        render={(value, onChange, placeholder, multiline) =>
+          multiline ? (
+            <Textarea value={value} onChange={onChange} placeholder={placeholder} rows={6} />
+          ) : (
+            <Input value={value} onChange={onChange} placeholder={placeholder} dir="auto" />
+          )
+        }
+      />
 
-      <Field label="Description" error={errors.description} required hint="Aim for 1–2 short paragraphs. Tell people what they'll get out of coming.">
-        <Textarea
-          value={form.description}
-          onChange={(e) => update("description", e.target.value)}
-          placeholder="What is the event? Who's it for? Any prerequisites?"
-          rows={6}
-        />
-      </Field>
+      {/* ── DESCRIPTION — EN/BN pair ────────────────────────────── */}
+      <BilingualPair
+        enKey="description"
+        bnKey="description_bn"
+        form={form}
+        errors={errors}
+        update={update}
+        copyEnToBn={copyEnToBn}
+        enLabel="Description"
+        bnLabel="Description (বাংলা) — optional"
+        enRequired
+        enHint="Aim for 1–2 short paragraphs. Tell people what they'll get out of coming."
+        enPlaceholder="What is the event? Who's it for? Any prerequisites?"
+        bnPlaceholder="ঐচ্ছিক — পরে এডিটর পূরণ করতে পারেন"
+        multiline
+        render={(value, onChange, placeholder) => (
+          <Textarea value={value} onChange={onChange} placeholder={placeholder} rows={6} dir="auto" />
+        )}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Start date" error={errors.start_date} required>
@@ -404,22 +458,43 @@ function Step2({ form, errors, update }: StepProps) {
         </Field>
       </div>
 
-      <Field label="Venue name" error={errors.venue_name} required>
-        <Input
-          value={form.venue_name}
-          onChange={(e) => update("venue_name", e.target.value)}
-          placeholder="e.g. Nagar Baul Heritage House"
-        />
-      </Field>
+      {/* ── VENUE NAME — EN/BN pair ─────────────────────────────── */}
+      <BilingualPair
+        enKey="venue_name"
+        bnKey="venue_name_bn"
+        form={form}
+        errors={errors}
+        update={update}
+        copyEnToBn={copyEnToBn}
+        enLabel="Venue name"
+        bnLabel="Venue name (বাংলা) — optional"
+        enRequired
+        enPlaceholder="e.g. Nagar Baul Heritage House"
+        bnPlaceholder="ঐচ্ছিক — পরে এডিটর পূরণ করতে পারেন"
+        render={(value, onChange, placeholder) => (
+          <Input value={value} onChange={onChange} placeholder={placeholder} dir="auto" />
+        )}
+      />
 
-      <Field label="Address / area details" error={errors.area_details} required hint="House, road, and a recognizable landmark.">
-        <Textarea
-          value={form.area_details}
-          onChange={(e) => update("area_details", e.target.value)}
-          placeholder="House 22, Road 7, beside Lake Park"
-          rows={2}
-        />
-      </Field>
+      {/* ── AREA DETAILS — EN/BN pair ───────────────────────────── */}
+      <BilingualPair
+        enKey="area_details"
+        bnKey="area_details_bn"
+        form={form}
+        errors={errors}
+        update={update}
+        copyEnToBn={copyEnToBn}
+        enLabel="Address / area details"
+        bnLabel="Address / area details (বাংলা) — optional"
+        enRequired
+        enHint="House, road, and a recognizable landmark."
+        enPlaceholder="House 22, Road 7, beside Lake Park"
+        bnPlaceholder="ঐচ্ছিক — পরে এডিটর পূরণ করতে পারেন"
+        multiline
+        render={(value, onChange, placeholder) => (
+          <Textarea value={value} onChange={onChange} placeholder={placeholder} rows={2} dir="auto" />
+        )}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="City" required>
@@ -588,6 +663,17 @@ function Step3({
 
 // ─── Step 4 — review ────────────────────────────────────────────
 function Step4({ form }: { form: FormState }) {
+  const bnCoverage = React.useMemo(() => {
+    const pairs: Array<[keyof FormState, keyof FormState]> = [
+      ["title", "title_bn"],
+      ["description", "description_bn"],
+      ["venue_name", "venue_name_bn"],
+      ["area_details", "area_details_bn"],
+    ];
+    const filled = pairs.filter(([, bn]) => (form[bn] as string).trim().length > 0).length;
+    return { filled, total: pairs.length };
+  }, [form]);
+
   return (
     <div className="space-y-6">
       <header>
@@ -604,13 +690,19 @@ function Step4({ form }: { form: FormState }) {
       </ReviewSection>
 
       <ReviewSection title="Event">
-        <ReviewRow label="Title" value={form.title} />
-        <ReviewRow label="Description" value={form.description} multi />
+        <ReviewRow label="Title (English)" value={form.title} />
+        {form.title_bn && <ReviewRow label="Title (বাংলা)" value={form.title_bn} />}
+        <ReviewRow label="Description (English)" value={form.description} multi />
+        {form.description_bn && <ReviewRow label="Description (বাংলা)" value={form.description_bn} multi />}
         <ReviewRow
           label="When"
           value={`${form.start_date} · ${form.start_time}${form.end_date ? ` — ${form.end_date} · ${form.end_time}` : ""}`}
         />
-        <ReviewRow label="Where" value={`${form.venue_name}, ${form.area_details}, ${form.sub_area}, ${form.city}`} />
+        <ReviewRow label="Venue (English)" value={form.venue_name} />
+        {form.venue_name_bn && <ReviewRow label="Venue (বাংলা)" value={form.venue_name_bn} />}
+        <ReviewRow label="Address (English)" value={form.area_details} multi />
+        {form.area_details_bn && <ReviewRow label="Address (বাংলা)" value={form.area_details_bn} multi />}
+        <ReviewRow label="Where" value={`${form.sub_area}, ${form.city}`} />
         {form.maps_link && <ReviewRow label="Maps" value={form.maps_link} />}
       </ReviewSection>
 
@@ -645,6 +737,114 @@ function Step4({ form }: { form: FormState }) {
         )}
         {form.additional_notes && <ReviewRow label="Notes" value={form.additional_notes} multi />}
       </ReviewSection>
+
+      {bnCoverage.filled > 0 && (
+        <div className="rounded-lg border border-accent-200 bg-accent-50 p-4 text-xs text-accent-700">
+          ✓ Bangla coverage: {bnCoverage.filled}/{bnCoverage.total} fields. Our editors
+          can fill in the rest before publishing.
+        </div>
+      )}
+      {bnCoverage.filled === 0 && (
+        <div className="rounded-lg border border-rule bg-cream-50 p-4 text-xs text-ink-500">
+          No Bangla fields filled in. That's fine — our editors will add them before publishing
+          for our default Bangla audience.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Bilingual field pair (EN row + collapsible BN row) ─────────────
+function BilingualPair({
+  enKey,
+  bnKey,
+  form,
+  errors,
+  update,
+  copyEnToBn,
+  enLabel,
+  bnLabel,
+  enRequired = false,
+  enHint,
+  enPlaceholder,
+  bnPlaceholder,
+  multiline = false,
+  render,
+}: {
+  enKey: keyof FormState;
+  bnKey: keyof FormState;
+  form: FormState;
+  errors: Partial<Record<keyof FormState, string>>;
+  update: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+  copyEnToBn: (en: keyof FormState, bn: keyof FormState) => void;
+  enLabel: string;
+  bnLabel: string;
+  enRequired?: boolean;
+  enHint?: string;
+  enPlaceholder?: string;
+  bnPlaceholder?: string;
+  multiline?: boolean;
+  render: (
+    value: string,
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void,
+    placeholder?: string,
+    multiline?: boolean,
+  ) => React.ReactNode;
+}) {
+  const [bnFocused, setBnFocused] = React.useState(false);
+  const bnValue = (form[bnKey] as string) ?? "";
+
+  return (
+    <div className="space-y-3 rounded-lg border border-rule bg-cream-50/40 p-3 md:p-4">
+      {/* English row */}
+      <Field label={enLabel} error={errors[enKey]} required={enRequired} hint={enHint}>
+        {render(
+          form[enKey] as string,
+          (e) => update(enKey, e.target.value as never),
+          enPlaceholder,
+          multiline,
+        )}
+      </Field>
+
+      {/* Bangla row — shown directly for clarity (single submitter-per-event flow) */}
+      <div className="space-y-1.5 border-t border-rule pt-3">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-ink-700">
+            <span className="inline-flex items-center gap-1.5">
+              {bnLabel}
+            </span>
+            <span className="ml-2 inline-flex items-center rounded-full bg-accent-50 px-2 py-0.5 text-[0.6rem] font-mono uppercase tracking-wider text-accent-700">
+              বাংলা
+            </span>
+          </Label>
+          <button
+            type="button"
+            onClick={() => copyEnToBn(enKey, bnKey)}
+            className="inline-flex items-center gap-1 text-xs text-ink-500 hover:text-ink"
+            title="Copy the English value into the Bangla field as a starting point"
+            aria-label={`Copy ${enLabel} to Bangla`}
+          >
+            <Copy className="h-3 w-3" />
+            Copy from English
+          </button>
+        </div>
+        <div onFocus={() => setBnFocused(true)} onBlur={() => setBnFocused(false)}>
+          {render(
+            bnValue,
+            (e) => update(bnKey, e.target.value as never),
+            bnPlaceholder,
+            multiline,
+          )}
+        </div>
+        <p className="text-[0.65rem] text-ink-500">
+          Optional. Leave empty if you don't have a translation — our editors will fill it in.
+        </p>
+        {!bnFocused && bnValue.length === 0 && (
+          <p className="text-[0.65rem] text-ink-400 italic">
+            Tip: if your event is mostly in Bangla, type the Bangla version here and leave English blank or write a short English summary.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

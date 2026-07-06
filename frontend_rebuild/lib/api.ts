@@ -233,7 +233,9 @@ export async function getLookups(): Promise<ApiResponse<Lookups>> {
 
 export interface SubmitPayload {
   title: string;
+  title_bn?: string;
   description: string;
+  description_bn?: string;
   start_date: string;
   start_time: string;
   end_date?: string;
@@ -241,7 +243,9 @@ export interface SubmitPayload {
   city: string;
   sub_area: string;
   venue_name: string;
+  venue_name_bn?: string;
   area_details: string;
+  area_details_bn?: string;
   maps_link?: string;
   categories: string[];
   audience_tags?: string[];
