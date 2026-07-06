@@ -4,45 +4,46 @@
 
 @layer base {
   :root {
-    /* Editorial warm palette mapped to shadcn-style HSL for primitives */
-    --background: 36 33% 97%;            /* cream-100 #FAF7F2 */
-    --foreground: 0 0% 10%;              /* ink-900 #1A1A1A */
-    --card: 0 0% 100%;                   /* paper */
+    /* Ghurighuri brand palette (see tailwind.config.ts). Mapped to
+       shadcn-style HSL so primitives stay in sync with Tailwind classes. */
+    --background: 47 100% 96%;             /* cream-50 #FFFBF0 — warm cream page bg (brand) */
+    --foreground: 0 0% 10%;               /* charcoal-900 — body text */
+    --card: 0 0% 100%;                    /* white */
     --card-foreground: 0 0% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
-    --primary: 167 100% 20%;            /* accent-500 #006A4E (Bangladesh green) */
-    --primary-foreground: 36 33% 97%;
-    --secondary: 36 27% 92%;             /* cream-200 #F4EFE5 */
+    --primary: 20 90% 53%;                /* orange-500 #F97316 — Ghurighuri primary */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 48 95% 62%;              /* yellow-400 #FACC15 — secondary */
     --secondary-foreground: 0 0% 10%;
-    --muted: 36 27% 92%;                 /* cream-200 */
-    --muted-foreground: 0 0% 42%;        /* ink-500 #6B6B6B */
-    --destructive: 8 75% 45%;            /* ember-500 #C8341B */
+    --muted: 47 90% 92%;                  /* cream-100 #FFF6DC wash */
+    --muted-foreground: 0 0% 32%;         /* ink-500 */
+    --destructive: 14 90% 53%;            /* orange-600 #EA580C */
     --destructive-foreground: 0 0% 100%;
-    --border: 35 30% 87%;                /* rule #E8E2D6 */
-    --input: 35 30% 87%;
-    --ring: 167 100% 20%;
+    --border: 33 100% 86%;                /* warm tinted border #FFE6D1 */
+    --input: 33 100% 86%;
+    --ring: 199 92% 60%;                  /* sky-500 — focus ring */
     --radius: 0.5rem;
   }
 
   .dark {
     --background: 0 0% 7%;
-    --foreground: 36 33% 95%;
+    --foreground: 0 0% 95%;
     --card: 0 0% 10%;
-    --card-foreground: 36 33% 95%;
+    --card-foreground: 0 0% 95%;
     --popover: 0 0% 10%;
-    --popover-foreground: 36 33% 95%;
-    --primary: 158 64% 50%;              /* lighter green for dark mode */
+    --popover-foreground: 0 0% 95%;
+    --primary: 20 90% 53%;                /* deep orange stays vibrant in dark */
     --primary-foreground: 0 0% 7%;
-    --secondary: 0 0% 14%;
-    --secondary-foreground: 36 33% 95%;
+    --secondary: 48 95% 35%;
+    --secondary-foreground: 0 0% 95%;
     --muted: 0 0% 14%;
     --muted-foreground: 0 0% 65%;
-    --destructive: 8 75% 55%;
+    --destructive: 20 90% 60%;
     --destructive-foreground: 0 0% 7%;
     --border: 0 0% 18%;
     --input: 0 0% 18%;
-    --ring: 158 64% 50%;
+    --ring: 199 92% 60%;
   }
 
   * {
@@ -61,6 +62,35 @@
     @apply bg-background text-foreground font-sans;
     font-size: 16px;
     line-height: 1.6;
+  }
+
+  /* ── Script-specific typography ──────────────────────────────────────
+     Bangla conjuncts (যুক্তাক্ষর) stack vertically; `tracking-tight` makes
+     adjacent glyphs touch and become unreadable. We also bump line-height
+     to give stacked conjuncts room, and switch display faces to Anek Bangla
+     so big headings don't fall back to the system serif.
+
+     English inherits the existing tightened editorial treatment.
+  */
+  body.bn {
+    /* Reset letter-spacing and tracking utilities don't reach into body, but
+       `tracking-*` on children still applies — provide a local override
+       via CSS variables on .bn descendants (handled in `.bn` rule below). */
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "akhn" 1;
+    line-height: 1.75;
+  }
+  body.bn .font-display,
+  body.bn [class*="font-display"] {
+    font-family: var(--font-anek-bangla), var(--font-hind-siliguri), serif;
+    letter-spacing: -0.01em; /* gentle tightening, not full tracking-tight */
+  }
+  body.bn [class*="tracking-"] {
+    /* Tailwind's `tracking-tight` (-0.025em) and `tracking-tighter` (-0.05em)
+       make Bangla conjuncts merge. Force a sane local minimum. */
+    letter-spacing: 0 !important;
+  }
+  body.bn .eyebrow {
+    letter-spacing: 0.05em;
   }
 
   /* Editorial selection */
@@ -90,9 +120,39 @@
 }
 
 @layer components {
-  /* Editorial container — used by hero/sections, NOT page chrome */
+  /* Editorial container — used by hero/sections, NOT page chrome.
+     Tighter gutter on mobile so 360px screens get usable horizontal real estate. */
   .editorial-container {
-    @apply mx-auto w-full max-w-[1440px] px-5 md:px-8 lg:px-12;
+    @apply mx-auto w-full max-w-[1440px] px-4 md:px-8 lg:px-12;
+  }
+
+  /* Mobile-first redesign primitives */
+
+  /* Padding so fixed sticky bars don't cover the last 4.5rem of content. */
+  .thumb-zone {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4.5rem);
+  }
+
+  /* Scroll-snap horizontal row — used by EditorialSection carousels on mobile.
+     This is a scroll-snap CONTAINER, not a layout container; the actual layout
+     (grid vs flex) is set inline via Tailwind so we don't fight column rules. */
+  .snap-x-row {
+    scroll-snap-type: x mandatory;
+    overflow-x: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .snap-x-row::-webkit-scrollbar {
+    display: none;
+  }
+  .snap-x-row > * {
+    scroll-snap-align: start;
+  }
+  /* Override: the LAST slide snaps to the right edge of the viewport so the
+     right-side white gap disappears. */
+  .snap-x-row > .snap-end {
+    scroll-snap-align: end;
   }
 
   /* Typographic refinements */
@@ -111,9 +171,10 @@
     @apply h-full w-px bg-rule;
   }
 
-  /* Small-caps eyebrow label */
+  /* Small-caps eyebrow label — the brand's signature mono-caps kicker.
+     Used consistently on every section's intro for editorial rhythm. */
   .eyebrow {
-    @apply text-[0.6875rem] font-medium uppercase tracking-[0.18em] text-ink-500;
+    @apply font-mono text-[0.65rem] font-medium uppercase tracking-[0.2em] text-ink-500;
   }
 
   /* Editorial link underline (animated) */
@@ -155,6 +216,25 @@
 }
 
 @layer utilities {
+  /* Display helpers — show/hide by breakpoint, mobile-first */
+  .desktop-only {
+    display: none;
+  }
+  @media (min-width: 1024px) {
+    .desktop-only {
+      display: revert;
+    }
+  }
+
+  .mobile-only {
+    display: revert;
+  }
+  @media (min-width: 1024px) {
+    .mobile-only {
+      display: none;
+    }
+  }
+
   /* Hide scrollbar but keep functionality */
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -173,5 +253,14 @@
     margin-right: 0.5rem;
     margin-top: 0.25rem;
     color: hsl(var(--foreground));
+  }
+
+  /* Mobile text-overflow hardening — every grid/flex item with text must
+     explicitly opt into min-width: 0 so its children can shrink to fit the
+     track. Tailwind's `min-w-0` works for this; these rules are an extra
+     safety net for editorial cards / tiles. */
+  .editorial-card {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 }

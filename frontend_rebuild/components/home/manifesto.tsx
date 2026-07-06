@@ -15,20 +15,20 @@ export function Manifesto() {
           </div>
           <div className="md:col-span-7 space-y-5 text-ink-700 leading-relaxed">
             <p>
-              Dhaka has more events than anyone could ever attend. We're not trying to list
-              all of them. We're trying to surface the ones worth showing up for — small
-              workshops over big corporate conferences, neighborhood gatherings over mass
-              festivals, paid work that respects its makers and free events that respect
-              their audiences.
+              Dhaka has more going on than anyone could ever keep up with. We&rsquo;re
+              not trying to list all of it &mdash; we&rsquo;re trying to surface the
+              stuff worth showing up for. Small workshops over big corporate
+              conferences, neighborhood gatherings over mass festivals, paid work that
+              respects its makers, free events that respect their audiences.
             </p>
             <p>
-              Every event here is checked by a human. We confirm the venue, verify the
-              organizer, and pull the listing if anything looks off. If something's wrong
-              with a listing,{" "}
-              <a className="editorial-link" href="mailto:hello@cholojai.bd">
-                email us
+              Every event here is checked by a human. We confirm the venue, verify
+              the organizer, and pull the listing if anything looks off. If something&rsquo;s
+              off about a listing,{" "}
+              <a className="editorial-link" href="mailto:hello@ghurighuri.bd">
+                drop us a line
               </a>{" "}
-              and we'll fix it the same day.
+              &mdash; we&rsquo;ll fix it the same day.
             </p>
             <div className="pt-4 flex flex-wrap gap-2">
               {CATEGORIES.slice(0, 8).map((c) => (

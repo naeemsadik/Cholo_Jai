@@ -28,7 +28,7 @@ export function AdminLogin() {
       if (typeof window !== "undefined") {
         sessionStorage.setItem("cj_admin_token", res.data.token);
       }
-      router.push("/admin/events");
+      router.push("/admin");
     } else {
       setError(res.error || "Could not sign in.");
     }

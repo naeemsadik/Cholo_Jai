@@ -8,3 +8,11 @@ build/
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+
+# Analytics NDJSON store — append-only, regenerated per environment
+data/analytics.ndjson
+# Admin settings JSON — singleton blob, regenerated per environment
+data/settings.json
+
+# Dev server log (not for commit)
+devserver.log

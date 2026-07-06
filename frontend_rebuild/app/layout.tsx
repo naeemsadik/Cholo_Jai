@@ -1,9 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter, Hind_Siliguri, JetBrains_Mono } from "next/font/google";
+import {
+  Fraunces,
+  Inter,
+  Hind_Siliguri,
+  JetBrains_Mono,
+  Anek_Bangla,
+} from "next/font/google";
 import "./globals.css";
 
-import { SiteShell } from "@/components/site/site-shell";
 import { Toaster } from "@/components/ui/toaster";
+import { OrganizationSchema, WebSiteSchema } from "@/components/seo/structured-data";
+import { InjectedHead } from "@/components/seo/injected-head";
+import { InjectedBody } from "@/components/seo/injected-body";
+import { I18nProvider } from "@/lib/i18n/client";
+import { getDictionary, getLocaleFromHeaders } from "@/lib/i18n/server";
 
 const fraunces = Fraunces({
   subsets: ["latin", "latin-ext"],
@@ -26,6 +36,17 @@ const hindSiliguri = Hind_Siliguri({
   weight: ["300", "400", "500", "600", "700"],
 });
 
+// Anek Bangla — display companion to Fraunces for Bangla-script headings.
+// Pairs with Hind Siliguri (body) and shares Inter's calm, contemporary voice.
+// Designed by Google with explicit Bengali script coverage; weights 400–700
+// are enough for display work.
+const anekBangla = Anek_Bangla({
+  subsets: ["bengali"],
+  variable: "--font-anek-bangla",
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
+});
+
 const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains",
@@ -34,14 +55,14 @@ const jetbrains = JetBrains_Mono({
 });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-const SITE_NAME = "Cholo Jai";
+const SITE_NAME = "Ghurighuri";
 const SITE_DESCRIPTION =
-  "Cholo Jai — Find events worth going to in Bangladesh. A curated discovery platform for Dhaka and beyond: workshops, seminars, exhibitions, weekend gatherings, and more.";
+  "Ghurighuri — your next stop for ghurighuri. Five hand-picked things to do in Dhaka each week, no paywalls, no promotional fluff.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} — Find events worth going to in Bangladesh`,
+    default: `${SITE_NAME} — Your next stop for ghurighuri in Dhaka`,
     template: `%s · ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
@@ -49,36 +70,36 @@ export const metadata: Metadata = {
   keywords: [
     "events Bangladesh",
     "Dhaka events",
-    "events worth going to",
+    "events worth stepping out for",
     "workshops Dhaka",
     "seminars Bangladesh",
     "weekend events",
     "curated events",
-    "Cholo Jai",
+    "Ghurighuri",
   ],
-  authors: [{ name: "Cholo Jai" }],
-  creator: "Cholo Jai",
-  publisher: "Cholo Jai",
+  authors: [{ name: "Ghurighuri" }],
+  creator: "Ghurighuri",
+  publisher: "Ghurighuri",
   formatDetection: { email: false, address: false, telephone: false },
   openGraph: {
     type: "website",
     locale: "en_BD",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: `${SITE_NAME} — Find events worth going to in Bangladesh`,
+    title: `${SITE_NAME} — Your next stop for ghurighuri in Dhaka`,
     description: SITE_DESCRIPTION,
     images: [
       {
         url: "/og-default.png",
         width: 1200,
         height: 630,
-        alt: "Cholo Jai — curated events in Bangladesh",
+        alt: "Ghurighuri — your next stop for ghurighuri",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} — Find events worth going to`,
+    title: `${SITE_NAME} — Your next stop for ghurighuri`,
     description: SITE_DESCRIPTION,
     images: ["/og-default.png"],
   },
@@ -113,20 +134,41 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocaleFromHeaders();
+  const dict = getDictionary(locale);
+  // `lang` drives the browser's font fallback, hyphenation, and
+  // accessibility tree. We also add a `.bn`/`.en` body class for
+  // script-specific tweaks (line-height, letter-spacing, fonts).
+  const langAttr = locale === "bn" ? "bn" : "en";
+  const scriptClass = locale === "bn" ? "bn" : "en";
+
   return (
     <html
-      lang="en"
+      lang={langAttr}
       suppressHydrationWarning
-      className={`${fraunces.variable} ${inter.variable} ${hindSiliguri.variable} ${jetbrains.variable}`}
+      className={`${fraunces.variable} ${inter.variable} ${hindSiliguri.variable} ${anekBangla.variable} ${jetbrains.variable}`}
     >
-      <body className="min-h-screen bg-background font-sans antialiased">
-        <SiteShell>{children}</SiteShell>
-        <Toaster />
+      <body
+        className={`min-h-screen bg-background font-sans antialiased ${scriptClass}`}
+      >
+        <I18nProvider locale={locale} dict={dict}>
+          {/* Site-wide structured data for SEO + GEO (AI citation eligibility). */}
+          <OrganizationSchema />
+          <WebSiteSchema />
+          {/* Admin-authored head-placed pixels (GA4, TikTok, custom) + custom <meta> tags.
+              Server-rendered so they fire on first paint, no FOUC. */}
+          <InjectedHead />
+          {children}
+          {/* Admin-authored body-bottom pixels (Facebook Pixel standard placement).
+              Rendered after children so fbq('init') fires once the DOM is ready. */}
+          <InjectedBody />
+          <Toaster />
+        </I18nProvider>
       </body>
     </html>
   );

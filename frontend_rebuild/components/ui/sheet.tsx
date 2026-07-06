@@ -45,6 +45,10 @@ const SheetContent = React.forwardRef<
           "inset-y-0 right-0 h-full w-3/4 max-w-md border-l border-rule data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right duration-300",
         side === "left" &&
           "inset-y-0 left-0 h-full w-3/4 max-w-md border-r border-rule data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left duration-300",
+        side === "bottom" &&
+          "inset-x-0 bottom-0 max-h-[90vh] rounded-t-xl border-t border-rule data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom duration-300",
+        side === "top" &&
+          "inset-x-0 top-0 max-h-[90vh] rounded-b-xl border-b border-rule data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top duration-300",
         className,
       )}
       {...props}

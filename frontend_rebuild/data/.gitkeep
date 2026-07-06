@@ -1,0 +1,2 @@
+# NDJSON analytics store — append-only, gitignored.
+# Created lazily by lib/analytics-store.ts on first write.

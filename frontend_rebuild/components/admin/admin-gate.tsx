@@ -15,7 +15,7 @@ export function AdminGate({ children }: AdminGateProps) {
     if (typeof window === "undefined") return;
     const token = sessionStorage.getItem("cj_admin_token");
     if (!token) {
-      router.replace("/admin");
+      router.replace("/admin/login");
       return;
     }
     setReady(true);

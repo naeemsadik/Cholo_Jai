@@ -1,6 +1,8 @@
-# Cholo Jai — Frontend (v2 rebuild)
+# Ghurighuri — Frontend (v2 rebuild)
 
-A complete rebuild of the Cholo Jai frontend in Next.js 14 (App Router), TypeScript, and Tailwind, using an editorial visual system distinct from generic eventbrite-style templates.
+A complete rebuild of the Ghurighuri frontend in Next.js 14 (App Router), TypeScript, and Tailwind, using an editorial visual system distinct from generic eventbrite-style templates.
+
+> **Your next stop for ghurighuri** — discover. explore. experience.
 
 ## Quick start
 
@@ -36,7 +38,7 @@ app/
 
 components/
   ui/                     Button, Input, Card, Sheet, Tabs, Toast, etc.
-  site/                   Nav, Footer, Logo, SiteShell, FallbackBanner
+  site/                   Nav, Footer, Logo, SiteShell
   home/                   Hero, WeekendForecast, UpcomingGrid, etc.
   events/                 EventCard, FilterBar, OutboundButton, ShareButtons
   submit/                 SubmitForm (multi-step)

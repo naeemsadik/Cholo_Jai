@@ -18,7 +18,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
   const ics = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Cholo Jai//Events//EN",
+    "PRODID:-//Ghurighuri//Events//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",

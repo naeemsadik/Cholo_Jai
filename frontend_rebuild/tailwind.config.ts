@@ -1,5 +1,59 @@
 import type { Config } from "tailwindcss";
 
+// Ghurighuri brand palette (per brand_strategy.md):
+//   Primary:    Deep Orange #F97316, Warm Yellow #FACC15
+//   Secondary:  White, Charcoal Black, Sky Blue (accent)
+//
+// Original tokens (cream/paper/ink/rule/accent/ember) are kept as aliases
+// so every existing class keeps working without a sweeping refactor.
+
+const palette = {
+  // Warm Yellow primary — replaces the original cream family
+  yellow: {
+    DEFAULT: "#FACC15",
+    50: "#FEFCE8",
+    100: "#FEF7C3",
+    200: "#FEF08A",
+    300: "#FDE047",
+    400: "#FACC15",
+    500: "#EAB308",
+  },
+  // Deep Orange — replaces the original ember family (primary action color)
+  orange: {
+    DEFAULT: "#F97316",
+    50: "#FFF5EC",
+    100: "#FFE6D1",
+    200: "#FFC79C",
+    300: "#FFA668",
+    400: "#FB8B36",
+    500: "#F97316",
+    600: "#EA580C",
+    700: "#C2410C",
+  },
+  // Sky Blue accent — replaces the original green accent family
+  sky: {
+    DEFAULT: "#38BDF8",
+    50: "#EFF8FF",
+    100: "#DBEDFE",
+    200: "#BFDFFE",
+    300: "#93C9FD",
+    400: "#60A5FA",
+    500: "#38BDF8",
+    600: "#0EA5E9",
+    700: "#0284C7",
+  },
+  // Charcoal Black — replaces the original ink family
+  charcoal: {
+    DEFAULT: "#1A1A1A",
+    900: "#0F0F0F",
+    700: "#262626",
+    500: "#525252",
+    400: "#737373",
+    300: "#A3A3A3",
+    200: "#D4D4D4",
+  },
+};
+
 const config: Config = {
   darkMode: ["class"],
   content: [
@@ -21,51 +75,62 @@ const config: Config = {
     },
     extend: {
       colors: {
-        // Editorial warm palette — Cholo Jai
-        // Bangladesh flag colors used SPARINGLY (green = subtle accent, red = outbound CTA only)
+        // Ghurighuri brand palette — primary orange + yellow, sky-blue accent.
+        orange: palette.orange,
+        yellow: palette.yellow,
+        sky: palette.sky,
+        charcoal: palette.charcoal,
+
+        // ─── Compat aliases (legacy tokens from the editorial system) ───
+        // cream → warm-tinted near-white. Page background — quiet so the
+        // brand orange/yellow pop on top, but unmistakably warm (not gray).
         cream: {
-          DEFAULT: "#FAF7F2",
-          50: "#FDFCF8",
-          100: "#FAF7F2",
-          200: "#F4EFE5",
-          300: "#EBE3D2",
-          400: "#D9CDB3",
+          DEFAULT: "#FFFBF0",          // cream-50: page bg — warm cream, not gray
+          50: "#FFFBF0",               // lightest cream — page background
+          100: "#FFF6DC",              // cream-100: faint yellow wash (cards, bands)
+          200: "#FBE9C2",              // cream-200: card chips, subtle warm fill
+          300: "#F5D78A",              // cream-300: stronger warm fill
+          400: palette.yellow[100],    // cream-400: warm-yellow underline area
         },
+        // paper → white
         paper: "#FFFFFF",
+        // ink → charcoal
         ink: {
-          DEFAULT: "#1A1A1A",
-          900: "#0F0F0F",
-          700: "#2D2D2D",
-          500: "#6B6B6B",
-          400: "#8B8B8B",
-          300: "#B5B5B5",
-          200: "#D4D4D4",
+          DEFAULT: palette.charcoal.DEFAULT,
+          900: palette.charcoal[900],
+          700: palette.charcoal[700],
+          500: palette.charcoal[500],
+          400: palette.charcoal[400],
+          300: palette.charcoal[300],
+          200: palette.charcoal[200],
         },
-        rule: "#E8E2D6",
-        // Subtle Bangladesh-green accent — used like a single drop of color
+        // rule → warm-tinted divider (deep-orange 50 → still readable)
+        rule: "#FFE6D1",
+        // accent → sky blue (replaces Bangladesh green throughout)
         accent: {
-          DEFAULT: "#006A4E",
-          50: "#E6F1ED",
-          100: "#C9E0D7",
-          200: "#9CC9B8",
-          300: "#5FA589",
-          400: "#2E8466",
-          500: "#006A4E",
-          600: "#00563E",
-          700: "#003F2C",
+          DEFAULT: palette.sky.DEFAULT,
+          50: palette.sky[50],
+          100: palette.sky[100],
+          200: palette.sky[200],
+          300: palette.sky[300],
+          400: palette.sky[400],
+          500: palette.sky.DEFAULT,
+          600: palette.sky[600],
+          700: palette.sky[700],
         },
-        // Reserved for outbound CTA only — never as decorative color
+        // ember → deep orange (outbound CTA, primary action color)
         ember: {
-          DEFAULT: "#C8341B",
-          50: "#FBEAE6",
-          100: "#F5CABE",
-          200: "#EDA294",
-          300: "#E37865",
-          400: "#D45844",
-          500: "#C8341B",
-          600: "#A42913",
-          700: "#7A1D0D",
+          DEFAULT: palette.orange.DEFAULT,
+          50: palette.orange[50],
+          100: palette.orange[100],
+          200: palette.orange[200],
+          300: palette.orange[300],
+          400: palette.orange[400],
+          500: palette.orange.DEFAULT,
+          600: palette.orange[600],
+          700: palette.orange[700],
         },
+
         // shadcn-style aliases (mapped to our palette)
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -102,7 +167,7 @@ const config: Config = {
         display: ["var(--font-fraunces)", "ui-serif", "Georgia", "serif"],
         serif: ["var(--font-fraunces)", "ui-serif", "Georgia", "serif"],
         // Body / UI
-        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-ui"],
         // Bengali — for Bengali text passages
         bengali: ["var(--font-hind-siliguri)", "ui-sans-serif", "system-ui", "sans-serif"],
         // Mono for dates, ticket codes

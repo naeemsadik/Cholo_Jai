@@ -5,7 +5,7 @@ import { Mail, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toaster";
-import { subscribe } from "@/lib/api";
+import { subscribe, trackSubscribe } from "@/lib/api";
 
 export function SubscribeForm({ className }: { className?: string }) {
   const [email, setEmail] = React.useState("");
@@ -22,6 +22,7 @@ export function SubscribeForm({ className }: { className?: string }) {
     if (res.source === "live" || res.source === "fallback") {
       setStatus("success");
       setEmail("");
+      trackSubscribe();
       toast({
         title: "You're on the list",
         description: "We'll send weekend picks to your inbox — no spam.",

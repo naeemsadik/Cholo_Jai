@@ -21,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { SelectChip } from "@/components/ui/badge-chip";
 import { toast } from "@/components/ui/toaster";
-import { submitEvent } from "@/lib/api";
+import { submitEvent, trackFormCompletion } from "@/lib/api";
 import { CATEGORIES, AUDIENCE_TAGS, SUB_AREAS_DHAKA } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
@@ -183,6 +183,11 @@ export function SubmitForm() {
     setSubmitting(false);
     if (res.data) {
       setDone(true);
+      // Only track successful live submissions — don't pollute analytics with
+      // fallback-rendered client-only state.
+      if (res.source === "live") {
+        trackFormCompletion("submission", { title_len: form.title.length });
+      }
       toast({
         title: "Submission received",
         description: res.source === "fallback"
@@ -206,11 +211,11 @@ export function SubmitForm() {
         <div className="sticky top-24">
           <span className="eyebrow">Submit an event</span>
           <h1 className="mt-3 font-display text-3xl leading-tight tracking-tight text-balance md:text-4xl">
-            Tell us about your event.
+            Tell us what you&rsquo;re running.
           </h1>
           <p className="mt-4 text-sm text-ink-500 leading-relaxed">
-            We read every submission. If it's a fit for our editorial, we'll publish it
-            within 48 hours. The form takes about 5 minutes.
+            We read every submission. If it&rsquo;s a fit, we&rsquo;ll publish within 48 hours.
+            The form takes about five minutes &mdash; no login required.
           </p>
 
           {/* Step list */}
@@ -565,7 +570,7 @@ function Step3({
           id="promotion"
           checked={form.wants_promotion_support}
           onChange={(e) => update("wants_promotion_support", e.target.checked)}
-          label="I'm interested in future featured placement and promotion support from Cholo Jai."
+          label="I'm interested in future featured placement and promotion support from Ghurighuri."
         />
       </div>
 

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// Editorial "Are you an organizer?" CTA — used as section break
+// Friendly invite to organizers — used as section break
 export function OrganizerCTA() {
   return (
     <section className="border-b border-rule bg-cream-50">
@@ -11,12 +11,13 @@ export function OrganizerCTA() {
           <div className="md:col-span-7">
             <span className="eyebrow">For organizers</span>
             <h2 className="mt-4 font-display text-display-md tracking-tight text-balance">
-              Run something worth attending? Tell us about it.
+              Running something fun? Tell us about it.
             </h2>
             <p className="mt-5 max-w-xl text-ink-700 leading-relaxed">
-              We read every submission. If it's a fit, we'll publish it within 48 hours — and
-              we'll honestly say if it isn't. Featured placement is reserved for organizers
-              we work with directly.
+              We read every submission. If it&rsquo;s a fit, we&rsquo;ll publish within 48
+              hours. If it isn&rsquo;t, we&rsquo;ll tell you honestly &mdash; no vague
+              &ldquo;we&rsquo;ll get back to you&rdquo;. Featured spots are reserved for
+              folks we work with directly.
             </p>
           </div>
           <div className="md:col-span-5 md:flex md:justify-end">
