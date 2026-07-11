@@ -37,6 +37,7 @@ RUN composer install \
         --prefer-dist \
         --no-interaction \
         --optimize-autoloader \
+    --no-scripts \
         --ignore-platform-reqs
 
 # Now copy the rest of the source.
