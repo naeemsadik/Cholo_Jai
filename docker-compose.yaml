@@ -149,10 +149,14 @@ services:
     image: phpmyadmin:latest
     container_name: cholo-jai-pma
     restart: unless-stopped
+    # Optional utility service: disabled by default so production deploys
+    # don't fail if a host port is already occupied.
+    profiles:
+      - tools
     ports:
-      # Bind to localhost only — Coolify exposes via reverse proxy if
-      # needed. Remove the 127.0.0.1: prefix to expose publicly.
-      - '127.0.0.1:8080:80'
+      # Bind to localhost only. Make host port configurable to avoid
+      # collisions on shared VPS hosts.
+      - '127.0.0.1:${PHPMYADMIN_PORT:-18080}:80'
     environment:
       PMA_HOST: 'db'
       PMA_PORT: '3306'
