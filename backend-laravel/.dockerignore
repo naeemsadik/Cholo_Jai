@@ -7,7 +7,7 @@
 .github
 .gitattributes
 
-# Local artifacts we don't need in the image
+# Local artifacts
 .idea
 .vscode
 *.log
@@ -17,18 +17,19 @@
 ../frontend_rebuild
 ../frontend
 
-# Docker / deploy / docs that aren't needed at runtime
+# Docker / deploy / docs not needed at runtime
 docker-compose.yml
 .dockerignore
 Dockerfile
 README.md
 *.md
+DEPLOY.md
 
-# Local dev databases / uploads (rebuilt from migrations at boot)
+# Local dev databases / uploads
 database/database.sqlite
 storage/app/public/uploads/
 
-# Tests — phpunit isn't needed at runtime
+# Tests (phpunit not needed at runtime)
 tests
 phpunit.xml
 
