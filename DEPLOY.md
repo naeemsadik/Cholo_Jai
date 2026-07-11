@@ -5,12 +5,16 @@ in this directory (the root of the repo) build that subdirectory.
 
 ## Files
 
-- **`docker-compose.yml`** — Production compose for Coolify / VPS.
+- **`docker-compose.yaml`** — Production compose for Coolify / VPS.
   Builds the `backend` image from `backend-laravel/`. Brings up MySQL,
   php-fpm, nginx, and phpMyAdmin.
 - **`.env.coolify.example`** — Template for the env vars you need to set
   before `docker compose up -d`. Copy this to `.env` next to the
   compose file and fill in the secrets.
+
+> **Why `docker-compose.yaml` (not `.yml`)?** Coolify looks for that
+> exact filename. Compose itself accepts both, but Coolify's "Docker
+> Compose" deploy type does not.
 
 ## Deploy
 
@@ -44,7 +48,7 @@ backend-laravel/         ← the app source
 ├── app/                 ← Laravel code
 ├── docker/             ← Dockerfile + nginx.conf + entrypoint.sh
 └── ...
-docker-compose.yml       ← THIS file: builds backend-laravel/, runs everything
+docker-compose.yaml      ← THIS file: builds backend-laravel/, runs everything
 .env.coolify.example     ← env vars template
 ```
 
