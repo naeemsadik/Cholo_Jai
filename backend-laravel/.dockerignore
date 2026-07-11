@@ -1,0 +1,43 @@
+# Files excluded from the Docker build context (sent to the daemon when
+# `docker compose build` runs). Smaller context = faster builds.
+
+# Git + cache
+.git
+.gitignore
+.github
+.gitattributes
+
+# Local artifacts we don't need in the image
+.idea
+.vscode
+*.log
+.phpunit.result.cache
+
+# Frontend (we only deploy the backend)
+../frontend_rebuild
+../frontend
+
+# Docker / deploy / docs that aren't needed at runtime
+docker-compose.yml
+.dockerignore
+Dockerfile
+README.md
+*.md
+
+# Local dev databases / uploads (rebuilt from migrations at boot)
+database/database.sqlite
+storage/app/public/uploads/
+
+# Tests — phpunit isn't needed at runtime
+tests
+phpunit.xml
+
+# Production assets that we don't ship in the backend image
+public/build/
+public/hot
+
+# IDE / editor swap files
+*.swp
+*.swo
+*~
+.DS_Store
