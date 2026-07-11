@@ -23,7 +23,8 @@ import { StatusPill } from "@/components/admin/status-pill";
 import { HorizontalSnap } from "@/components/mobile/horizontal-snap";
 import { EventMobileActions } from "@/components/mobile/event-mobile-actions";
 import { EventSchema, BreadcrumbSchema } from "@/components/seo/structured-data";
-import { getEventBySlug, getRelatedEvents, getEvents } from "@/lib/api";
+import { getRelatedEvents, getEvents } from "@/lib/api";
+import { serverGetEventBySlug, serverGetEvents } from "@/lib/api.server";
 import { formatEventDate, formatPrice, formatTime } from "@/lib/utils";
 import { CATEGORIES, AUDIENCE_TAGS } from "@/lib/categories";
 
@@ -31,9 +32,10 @@ export const revalidate = 300;
 
 // Pre-generate static paths for fallback events at build time
 export async function generateStaticParams() {
-  const res = await getEvents({});
-  if (res.source === "live") return []; // rely on dynamic rendering
-  return res.data.slice(0, 12).map((e) => ({ slug: e.slug }));
+  const live = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (live) return []; // rely on dynamic rendering
+  const events = await serverGetEvents({});
+  return events.slice(0, 12).map((e) => ({ slug: e.slug }));
 }
 
 interface PageProps {
@@ -42,14 +44,13 @@ interface PageProps {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const res = await getEventBySlug(params.slug);
-  if (!res.data) {
+  const e = await serverGetEventBySlug(params.slug);
+  if (!e) {
     return {
       title: "Event not found",
       description: "This event is no longer available.",
     };
   }
-  const e = res.data;
   const price = formatPrice(e.price_type, e.price_note);
   const when = formatEventDate(e.start_date, e.start_time);
   const description = `${when} · ${e.venue_name}, ${e.sub_area} · ${price}. ${e.description.slice(0, 140)}…`;
@@ -74,18 +75,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function EventDetailPage({ params, searchParams }: PageProps) {
-  const res = await getEventBySlug(params.slug);
-  if (!res.data) notFound();
-  const event = res.data;
-  const isFallback = res.source === "fallback";
+  const event = await serverGetEventBySlug(params.slug);
+  if (!event) notFound();
+  const isFallback = !process.env.NEXT_PUBLIC_API_BASE_URL;
   // Admin-only preview indicator (no auth on MVP).
   // Admin surfaces internal status by appending `?preview=admin`.
   const showAdminStatus = searchParams.preview === "admin";
 
-  const [relatedRes] = await Promise.all([
-    getRelatedEvents(event.id, event.categories),
-  ]);
-  const related = relatedRes.data;
+  const allEvents = await serverGetEvents({});
+  const related = allEvents
+    .filter((e) => e.id !== event.id && event.categories.some((c) => e.categories.includes(c)))
+    .slice(0, 3);
 
   const catName = (slug: string) =>
     CATEGORIES.find((c) => c.slug === slug)?.name ?? slug;

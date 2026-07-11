@@ -19,12 +19,23 @@ import { DataSourceProvider } from "@/components/site/data-source-context";
 import { HorizontalSnap } from "@/components/mobile/horizontal-snap";
 import { NavFab } from "@/components/mobile/nav-fab";
 import { EventCard } from "@/components/events/event-card";
-import { getEvents, getFeaturedEvents, getHeroEvents } from "@/lib/api";
 import { formatEventDate, formatPrice } from "@/lib/utils";
-import { readHomeConfig } from "@/lib/cms-store";
+import {
+  DEFAULT_HOME_CONFIG,
+  readHomeConfig as readLocalHomeConfig,
+} from "@/lib/cms-store";
+import {
+  serverGetEvents,
+  serverGetFeaturedEvents,
+  serverGetHeroEvents,
+} from "@/lib/api.server";
 import { getLocaleFromHeaders } from "@/lib/i18n/server";
 import type { Event } from "@/lib/types";
-import type { HomeSectionConfig, HomeSectionId } from "@/lib/cms-store";
+import type {
+  HomePageConfig,
+  HomeSectionConfig,
+  HomeSectionId,
+} from "@/lib/cms-store";
 
 export const revalidate = 300; // ISR — revalidate every 5 minutes
 
@@ -68,24 +79,22 @@ function getMarqueeItems(
 }
 
 export default async function HomePage() {
-  const [locale, home, featuredRes, eventsRes, heroRes] = await Promise.all([
+  const [locale, localHome, upcoming, featured, heroEvents] = await Promise.all([
     getLocaleFromHeaders(),
-    readHomeConfig(),
-    getFeaturedEvents(),
-    getEvents(),
-    getHeroEvents(),
+    readLocalHomeConfig(),
+    serverGetEvents(),
+    serverGetFeaturedEvents(),
+    serverGetHeroEvents(),
   ]);
+  const home: HomePageConfig = localHome ?? DEFAULT_HOME_CONFIG;
+  const isLiveBackend = Boolean(process.env.NEXT_PUBLIC_API_BASE_URL);
 
   const today = new Date().toISOString().slice(0, 10);
-  const featured = featuredRes.data.filter((e) => e.start_date >= today);
-  const upcoming = eventsRes.data;
-  const heroEvents = heroRes.data.filter((e) => e.start_date >= today);
-  const isFallback =
-    featuredRes.source === "fallback" ||
-    eventsRes.source === "fallback" ||
-    heroRes.source === "fallback";
-  const lead = featured[0];
-  const secondaryFeatured = featured.slice(1, 5);
+  const filteredFeatured = featured.filter((e) => e.start_date >= today);
+  const filteredHero = heroEvents.filter((e) => e.start_date >= today);
+  const isFallback = !isLiveBackend;
+  const lead = filteredFeatured[0];
+  const secondaryFeatured = filteredFeatured.slice(1, 5);
 
   // Mobile "happening today" beat — next 3 events from today
   const happeningToday = upcoming
@@ -100,8 +109,8 @@ export default async function HomePage() {
     if (!isEnabled(sections, id)) return null;
     switch (id) {
       case "hero":
-        return heroEvents.length > 0 ? (
-          <HeroCarousel events={heroEvents.slice(0, getMaxItems(sections, "hero", 5))} />
+        return filteredHero.length > 0 ? (
+          <HeroCarousel events={filteredHero.slice(0, getMaxItems(sections, "hero", 5))} />
         ) : null;
       case "marquee":
         return <Marquee items={getMarqueeItems(sections)} locale={locale} />;

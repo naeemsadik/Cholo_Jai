@@ -8,9 +8,10 @@ import { SortControl } from "@/components/events/sort-control";
 import { EventsTableView } from "@/components/events/events-table-view";
 import { DataSourceProvider } from "@/components/site/data-source-context";
 import { PageViewTracker } from "@/components/analytics/page-view-tracker";
-import { getEvents } from "@/lib/api";
+import { FALLBACK_EVENTS } from "@/lib/fallback-data";
 import { readFiltersFromUrl } from "@/lib/utils";
 import { sortEvents, readSortFromParams } from "@/lib/event-sort";
+import { serverGetEvents } from "@/lib/api.server";
 import type { Event, EventFilters } from "@/lib/types";
 
 export const revalidate = 120; // ISR — listings revalidate every 2 min
@@ -35,16 +36,28 @@ export default async function EventsPage({ searchParams }: PageProps) {
   const filters: EventFilters = readFiltersFromUrl(params);
   const sort = readSortFromParams(params);
 
-  const apiFilters: EventFilters = { ...filters };
+  // Translate the EventFilters to the server-side cache key.
+  const apiFilters: Record<string, string | boolean> = {};
+  if (filters.city) apiFilters.city = filters.city;
+  if (filters.sub_area) apiFilters.sub_area = filters.sub_area;
+  if (filters.category) apiFilters.category = filters.category;
+  if (filters.audience_tag) apiFilters.audience_tag = filters.audience_tag;
+  if (filters.date_from) apiFilters.date_from = filters.date_from;
+  if (filters.date_to) apiFilters.date_to = filters.date_to;
+  if (filters.weekend) apiFilters.weekend = true;
+  if (filters.search) apiFilters.search = filters.search;
+  if (filters.featured) apiFilters.featured = true;
+  if (filters.price_type && filters.price_type !== "all") {
+    apiFilters.price_type = filters.price_type;
+  }
 
-  const [eventsRes, totalRes] = await Promise.all([
-    getEvents(apiFilters),
-    getEvents({}),
+  const [events, totalEvents] = await Promise.all([
+    serverGetEvents(apiFilters),
+    serverGetEvents({}),
   ]);
 
-  const events = eventsRes.data;
-  const totalCount = totalRes.data.length;
-  const isFallback = eventsRes.source === "fallback";
+  const totalCount = totalEvents.length;
+  const isFallback = !process.env.NEXT_PUBLIC_API_BASE_URL;
   const isListView = filters.view === "list";
 
   // Group by date for editorial sectioning (only when no date filter applied)

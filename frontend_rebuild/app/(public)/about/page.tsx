@@ -4,7 +4,8 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { CATEGORIES, AUDIENCE_TAGS } from "@/lib/categories";
 import { FAQSchema } from "@/components/seo/structured-data";
-import { readCmsPage } from "@/lib/cms-store";
+import { readCmsPage as readLocalCmsPage } from "@/lib/cms-store";
+import { serverGetCmsPage } from "@/lib/api.server";
 import { getLocaleFromHeaders } from "@/lib/i18n/server";
 import { pick } from "@/lib/i18n/event";
 import type { CmsBlock } from "@/lib/cms-store";
@@ -56,11 +57,19 @@ const FALLBACK_BLOCKS: CmsBlock[] = [
 ];
 
 export default async function AboutPage() {
-  const [locale, cmsPage] = await Promise.all([
+  const [locale, backendPage, localPage] = await Promise.all([
     getLocaleFromHeaders(),
-    readCmsPage("about"),
+    serverGetCmsPage("about"),
+    readLocalCmsPage("about"),
   ]);
-  const blocks = cmsPage?.blocks && cmsPage.blocks.length > 0 ? cmsPage.blocks : FALLBACK_BLOCKS;
+  // Prefer the backend CMS when available; fall back to local JSON, then
+  // to the hard-coded FALLBACK_BLOCKS below.
+  const blocks: CmsBlock[] =
+    backendPage && Array.isArray(backendPage.blocks) && backendPage.blocks.length > 0
+      ? (backendPage.blocks as CmsBlock[])
+      : localPage?.blocks && localPage.blocks.length > 0
+        ? localPage.blocks
+        : FALLBACK_BLOCKS;
 
   // Build FAQ schema from the first `faq` block (always English — schema
   // pages are not localized; bilingual content would split ranking across

@@ -39,6 +39,7 @@ export function SubmissionsList() {
   const [search, setSearch] = React.useState("");
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
+  const [loading, setLoading] = React.useState(true);
 
   // Debounce search so we don't churn on every keystroke.
   React.useEffect(() => {
@@ -57,9 +58,6 @@ export function SubmissionsList() {
     return () => {
       mounted = false;
     };
-    function setLoading(_: boolean) {
-      /* placeholder to keep mounted check happy */
-    }
   }, []);
 
   const subsArr = subs ?? [];

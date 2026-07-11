@@ -2,6 +2,11 @@
 // Per PRD §8.6: catch fetch failures (network error, timeout, non-2xx) and return
 // fallback data instead of throwing, so listing/detail/homepage pages still render.
 // IMPORTANT: fallback-rendered content must NOT trigger analytics events.
+//
+// Wired to the Laravel backend (see backend-laravel/README.md). When
+// NEXT_PUBLIC_API_BASE_URL is set (e.g. http://localhost:8000), all endpoints
+// hit the Laravel app. When unset, the public reads + analytics + CMS + settings
+// fall back to the bundled sample data or the local Next.js route handlers.
 
 import type {
   Event,
@@ -63,7 +68,6 @@ async function fetchWithTimeout(
         Accept: "application/json",
         ...(init.headers || {}),
       },
-      // Next.js fetch caching — defaults are sensible for ISR
       next: { revalidate: 60 },
     });
     return res;
@@ -94,6 +98,91 @@ async function tryFetch<T>(url: string, init?: RequestInit): Promise<T | null> {
 }
 
 // ──────────────────────────────────────────────────────────
+// Normalizers — adapt Laravel's wire shape to the frontend's
+// domain types so the existing components keep working.
+// ──────────────────────────────────────────────────────────
+
+/**
+ * Laravel returns:
+ *   { city: { id, name, slug }, sub_area: { id, name, slug },
+ *     organizer: { name, phone|null, email, website } }
+ * The frontend domain types want:
+ *   { city: string, sub_area: string, organizer: { name, phone?, email?, social_link? } }
+ *
+ * Flatten the nested objects to the legacy string shape and rename
+ * `organizer.website` → `organizer.social_link`.
+ */
+function normalizeEvent(raw: unknown): Event {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const city = r.city as { name?: string } | string | null | undefined;
+  const subArea = r.sub_area as { name?: string } | string | null | undefined;
+  const org = r.organizer as
+    | { name?: string; phone?: string | null; email?: string | null; website?: string | null; social_link?: string | null }
+    | undefined;
+
+  const cityName = typeof city === "string" ? city : city?.name ?? "";
+  const subAreaName = typeof subArea === "string" ? subArea : subArea?.name ?? "";
+
+  const flatName =
+    (r.organizer_name as string | undefined) ??
+    (org?.name as string | undefined) ??
+    "";
+  const flatPhone =
+    (r.organizer_phone as string | undefined) ??
+    (org?.phone as string | undefined) ??
+    null;
+  const flatEmail =
+    (r.organizer_email as string | undefined) ??
+    (org?.email as string | undefined) ??
+    null;
+  const flatSocial =
+    (r.organizer_social_link as string | undefined) ??
+    (org?.website as string | undefined) ??
+    (org?.social_link as string | undefined) ??
+    null;
+
+  return {
+    ...(r as unknown as Event),
+    city: cityName,
+    sub_area: subAreaName,
+    organizer: {
+      name: flatName,
+      phone: flatPhone,
+      email: flatEmail,
+      social_link: flatSocial,
+    },
+  };
+}
+
+/**
+ * Frontend `Event` (nested organizer) → Laravel wire format (flat fields).
+ * Used for admin POST/PATCH requests.
+ */
+function flattenEventPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...payload };
+
+  // Handle nested `organizer: { name, phone, email, social_link }`.
+  const org = out.organizer as
+    | { name?: string; phone?: string | null; email?: string | null; social_link?: string | null }
+    | undefined;
+  if (org && typeof org === "object") {
+    if (org.name !== undefined) out.organizer_name = org.name;
+    if (org.phone !== undefined) out.organizer_phone = org.phone;
+    if (org.email !== undefined) out.organizer_email = org.email;
+    if (org.social_link !== undefined) out.organizer_website = org.social_link;
+    delete out.organizer;
+  }
+
+  // The frontend allows slug in the payload but Laravel generates it.
+  delete out.slug;
+  // `expected_attendance` is currently a frontend-only field — backend
+  // accepts it but the live Laravel schema doesn't have it. Drop it here.
+  delete out.expected_attendance;
+
+  return out;
+}
+
+// ──────────────────────────────────────────────────────────
 // Events
 // ──────────────────────────────────────────────────────────
 
@@ -115,12 +204,11 @@ function buildQueryString(filters: EventFilters): string {
   return qs ? `?${qs}` : "";
 }
 
-// Local filter — applied to fallback data so the UI feels identical to live
 function applyLocalFilters(events: Event[], filters: EventFilters): Event[] {
   const today = new Date().toISOString().slice(0, 10);
   return events.filter((e) => {
     if (e.status !== "published") return false;
-    if (!filters.featured && e.start_date < today) return false; // exclude past unless filtering by featured
+    if (!filters.featured && e.start_date < today) return false;
     if (filters.city && e.city !== filters.city) return false;
     if (filters.sub_area && e.sub_area !== filters.sub_area) return false;
     if (filters.category && !e.categories.includes(filters.category)) return false;
@@ -158,12 +246,12 @@ function applyLocalFilters(events: Event[], filters: EventFilters): Event[] {
 }
 
 export async function getEvents(filters: EventFilters = {}): Promise<ApiResponse<Event[]>> {
-  const live = await tryFetch<Event[]>(`/events${buildQueryString(filters)}`);
+  const live = await tryFetch<unknown[]>(`/events${buildQueryString(filters)}`);
   if (live) {
-    return { data: live, source: "live" };
+    const normalized = (live as unknown[]).map((e) => normalizeEvent(e as never)) as Event[];
+    return { data: normalized, source: "live" };
   }
   const filtered = applyLocalFilters(FALLBACK_EVENTS, filters);
-  // Sort by date ascending
   filtered.sort((a, b) => a.start_date.localeCompare(b.start_date));
   return {
     data: filtered,
@@ -176,16 +264,15 @@ export async function getFeaturedEvents(): Promise<ApiResponse<Event[]>> {
   return getEvents({ featured: true });
 }
 
-// Hero carousel — events explicitly promoted by editors for the homepage carousel.
-// Falls back to top featured events when the live API or fallback has no `show_in_hero`.
 export async function getHeroEvents(): Promise<ApiResponse<Event[]>> {
-  const live = await tryFetch<Event[]>(`/events/hero`);
-  if (live) return { data: live, source: "live" };
+  const live = await tryFetch<unknown[]>(`/events/hero`);
+  if (live) {
+    return { data: (live as unknown[]).map((e) => normalizeEvent(e as never)) as Event[], source: "live" };
+  }
   const today = new Date().toISOString().slice(0, 10);
   const hero = FALLBACK_EVENTS.filter(
     (e) => e.status === "published" && e.show_in_hero && e.start_date >= today,
   );
-  // If none marked, fall back to featured for graceful degradation
   const source =
     hero.length > 0
       ? hero.sort((a, b) => a.start_date.localeCompare(b.start_date))
@@ -196,8 +283,8 @@ export async function getHeroEvents(): Promise<ApiResponse<Event[]>> {
 }
 
 export async function getEventBySlug(slug: string): Promise<ApiResponse<Event | null>> {
-  const live = await tryFetch<Event>(`/events/${encodeURIComponent(slug)}`);
-  if (live) return { data: live, source: "live" };
+  const live = await tryFetch<unknown>(`/events/${encodeURIComponent(slug)}`);
+  if (live) return { data: normalizeEvent(live as never), source: "live" };
   const found = FALLBACK_EVENTS.find((e) => e.slug === slug && e.status === "published") ?? null;
   return {
     data: found,
@@ -221,9 +308,30 @@ export async function getRelatedEvents(
 // Lookups
 // ──────────────────────────────────────────────────────────
 
+/**
+ * Laravel returns sub_areas as `{ id, city_id, name, slug }` — frontend
+ * types use `{ id, city, name, slug }` (city is the city name). Rewrite.
+ */
+function normalizeLookups(raw: Lookups): Lookups {
+  return {
+    ...raw,
+    sub_areas: (raw.sub_areas ?? []).map((s) => {
+      const anyS = s as unknown as Record<string, unknown>;
+      return {
+        id: s.id,
+        // The frontend's SubArea.city is the city NAME. We don't get that
+        // from Laravel (we get city_id) so fall back to "Dhaka" (MVP-only city).
+        city: "Dhaka",
+        name: s.name,
+        slug: anyS.slug as string ?? s.name.toLowerCase().replace(/\s+/g, "-"),
+      };
+    }),
+  };
+}
+
 export async function getLookups(): Promise<ApiResponse<Lookups>> {
   const live = await tryFetch<Lookups>(`/lookups`);
-  if (live) return { data: live, source: "live" };
+  if (live) return { data: normalizeLookups(live), source: "live" };
   return { data: FALLBACK_LOOKUPS, source: "fallback" };
 }
 
@@ -268,7 +376,6 @@ export async function submitEvent(payload: SubmitPayload): Promise<ApiResponse<S
     body: JSON.stringify(payload),
   });
   if (live) return { data: live, source: "live" };
-  // Fallback: simulate submission success locally so UX is not broken
   const mock: Submission = {
     id: `local-${Date.now()}`,
     ...payload,
@@ -319,11 +426,6 @@ export async function subscribe(email: string): Promise<ApiResponse<EmailSubscri
 
 export type AnalyticsEventType = AnalyticsEvent["event_type"];
 
-/**
- * Session id, generated once per browser tab and stored in sessionStorage
- * (cleared on tab close — not localStorage, so a fresh tab = fresh session).
- * Sent as `X-Ghurighuri-Session` header so server-side aggregator can dedupe.
- */
 function getOrCreateSessionId(): string {
   if (typeof window === "undefined") return "";
   const KEY = "cj_session_id";
@@ -366,7 +468,6 @@ function payloadFor(event_type: AnalyticsEventType, p: Partial<AnalyticsEvent>):
       href: (p as Record<string, unknown>).outbound_href as string ?? "",
     };
   }
-  // form_submit / subscribe → form_completion
   return {
     form_id:
       event_type === "subscribe"
@@ -380,9 +481,6 @@ export async function trackEvent(
   event_type: AnalyticsEventType,
   payload: Partial<AnalyticsEvent> = {},
 ): Promise<void> {
-  // Repointed to local Next.js route handlers (data/analytics.ndjson) when no
-  // backend is configured; falls through to API_BASE_URL when a real backend
-  // exists. Fire-and-forget — analytics must never block the UI.
   const useLocal = !API_BASE_URL;
   const url = useLocal
     ? routeFor(event_type)
@@ -407,13 +505,11 @@ export async function trackEvent(
 }
 
 export function trackOutboundClick(eventId: string, label: string, href: string) {
-  // Fire-and-forget
   void trackEvent("outbound_click", {
     event_id: eventId,
     outbound_label: label,
     outbound_href: href,
   } as Partial<AnalyticsEvent>);
-  // gtag-style fallback if no backend (no-op when gtag isn't installed)
   if (typeof window !== "undefined" && (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag) {
     (window as unknown as { gtag: (...args: unknown[]) => void }).gtag("event", "outbound_click", {
       event_id: eventId,
@@ -423,7 +519,6 @@ export function trackOutboundClick(eventId: string, label: string, href: string)
   }
 }
 
-/** Public form completion — newsletter, contact, submission. */
 export function trackFormCompletion(form_id: string, meta?: Record<string, unknown>) {
   void trackEvent("form_submit", {
     form_id,
@@ -436,50 +531,9 @@ export function trackSubscribe() {
 }
 
 // ──────────────────────────────────────────────────────────
-// Admin (placeholder — admin UI is client-rendered and uses local state when API is down)
+// Admin auth + auth header helper
 // ──────────────────────────────────────────────────────────
 
-export async function adminLogin(email: string, password: string): Promise<ApiResponse<{ token: string }>> {
-  const live = await tryFetch<{ token: string }>(`/admin/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  if (live) return { data: live, source: "live" };
-  // Demo-mode: accept any non-empty credentials when API is offline
-  if (email && password) {
-    return { data: { token: "demo-mode-token" }, source: "fallback" };
-  }
-  return { data: null as never, source: "empty", error: "Invalid credentials." };
-}
-
-export async function getAdminSubmissions(): Promise<ApiResponse<Submission[]>> {
-  const live = await tryFetch<Submission[]>(`/admin/submissions`);
-  if (live) return { data: live, source: "live" };
-  return { data: FALLBACK_SUBMISSIONS, source: "fallback" };
-}
-
-export async function getAdminEvents(): Promise<ApiResponse<Event[]>> {
-  const live = await tryFetch<Event[]>(`/admin/events`);
-  if (live) return { data: live, source: "live" };
-  return { data: FALLBACK_EVENTS, source: "fallback" };
-}
-
-// ──────────────────────────────────────────────────────────
-// Admin — local fallback store. Module-scoped so admin UX is testable
-// without a backend. Mutations survive within a single page session only
-// (per PRD §8.5/§8.6).
-// ──────────────────────────────────────────────────────────
-
-const LOCAL_EVENTS: Map<string, Event> = new Map(
-  FALLBACK_EVENTS.map((e) => [e.id, { ...e }]),
-);
-const LOCAL_SUBMISSIONS: Map<string, Submission> = new Map(
-  FALLBACK_SUBMISSIONS.map((s) => [s.id, { ...s }]),
-);
-
-// Auth headers — admin endpoints require Bearer token. We always send it when
-// present; backend may reject if invalid (matches PRD §8.4 admin auth model).
 function authHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};
   const token = sessionStorage.getItem("cj_admin_token");
@@ -510,38 +564,68 @@ async function tryFetchWithAuth<T>(url: string, init?: RequestInit): Promise<T |
   }
 }
 
+// ──────────────────────────────────────────────────────────
+// Admin (live backend) + local fallback store
+// ──────────────────────────────────────────────────────────
+
+export async function adminLogin(email: string, password: string): Promise<ApiResponse<{ token: string }>> {
+  const live = await tryFetch<{ token: string }>(`/admin/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (live) return { data: live, source: "live" };
+  if (email && password) {
+    return { data: { token: "demo-mode-token" }, source: "fallback" };
+  }
+  return { data: null as never, source: "empty", error: "Invalid credentials." };
+}
+
+export async function getAdminSubmissions(): Promise<ApiResponse<Submission[]>> {
+  const live = await tryFetch<unknown[]>(`/admin/submissions`);
+  if (live) return { data: (live as unknown[]).map((s) => s as Submission), source: "live" };
+  return { data: FALLBACK_SUBMISSIONS, source: "fallback" };
+}
+
+export async function getAdminEvents(): Promise<ApiResponse<Event[]>> {
+  const live = await tryFetch<unknown[]>(`/admin/events`);
+  if (live) {
+    const normalized = (live as unknown[]).map((e) => normalizeEvent(e as never)) as Event[];
+    return { data: normalized, source: "live" };
+  }
+  return { data: FALLBACK_EVENTS, source: "fallback" };
+}
+
+// Local fallback store (only when live backend is unreachable)
+const LOCAL_EVENTS: Map<string, Event> = new Map(
+  FALLBACK_EVENTS.map((e) => [e.id, { ...e }]),
+);
+const LOCAL_SUBMISSIONS: Map<string, Submission> = new Map(
+  FALLBACK_SUBMISSIONS.map((s) => [s.id, { ...s }]),
+);
+
 function nowIso(): string {
   return new Date().toISOString();
 }
 
 // Admin events ─────────────────────────────────────────────────────────────
 
-/**
- * Create a new event from the admin panel. Used by `/admin/events/new`.
- * Returns the created Event on success.
- *
- * Backend contract (when wired up): `POST /admin/events` with a body that
- * matches the Event type (id/server-generated fields are ignored). For
- * demo / no-backend mode, we synthesize a plausible response so the
- * admin UI is testable end-to-end without the FastAPI server running.
- */
 export async function adminCreateEvent(
   payload: Omit<Event, "id" | "created_at" | "updated_at" | "status"> & {
     status?: EventStatus;
   },
 ): Promise<ApiResponse<Event>> {
-  const live = await tryFetchWithAuth<Event>(`/admin/events`, {
+  const wirePayload = flattenEventPayload({ ...(payload as Record<string, unknown>) });
+  const live = await tryFetchWithAuth<unknown>(`/admin/events`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(wirePayload),
   });
   if (live) {
-    LOCAL_EVENTS.set(live.id, live);
-    return { data: live, source: "live" };
+    const e = normalizeEvent(live as never);
+    LOCAL_EVENTS.set(e.id, e);
+    return { data: e, source: "live" };
   }
-  // Local fallback — useful for the demo path. Build a synthetic Event
-  // that satisfies the type and persists in the in-memory store so the
-  // admin list reflects the new entry on next refresh.
   const now = nowIso();
   const id = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const slugBase = payload.slug || payload.title || "untitled";
@@ -567,8 +651,8 @@ export async function adminCreateEvent(
 export async function adminGetEventById(
   id: string,
 ): Promise<ApiResponse<Event | null>> {
-  const live = await tryFetchWithAuth<Event>(`/admin/events/${encodeURIComponent(id)}`);
-  if (live) return { data: live, source: "live" };
+  const live = await tryFetchWithAuth<unknown>(`/admin/events/${encodeURIComponent(id)}`);
+  if (live) return { data: normalizeEvent(live as never), source: "live" };
   const local = LOCAL_EVENTS.get(id) ?? null;
   return { data: local, source: local ? "fallback" : "empty" };
 }
@@ -577,14 +661,19 @@ export async function adminUpdateEvent(
   id: string,
   patch: Partial<Event>,
 ): Promise<ApiResponse<Event | null>> {
-  const live = await tryFetchWithAuth<Event>(`/admin/events/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  });
+  const wirePayload = flattenEventPayload({ ...(patch as Record<string, unknown>) });
+  const live = await tryFetchWithAuth<unknown>(
+    `/admin/events/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(wirePayload),
+    },
+  );
   if (live) {
-    LOCAL_EVENTS.set(live.id, live);
-    return { data: live, source: "live" };
+    const e = normalizeEvent(live as never);
+    LOCAL_EVENTS.set(e.id, e);
+    return { data: e, source: "live" };
   }
   const current = LOCAL_EVENTS.get(id);
   if (!current) return { data: null, source: "empty", error: "Event not found." };
@@ -610,7 +699,7 @@ export async function adminSetEventStatus(
   id: string,
   status: EventStatus,
 ): Promise<ApiResponse<Event | null>> {
-  const live = await tryFetchWithAuth<Event>(
+  const live = await tryFetchWithAuth<unknown>(
     `/admin/events/${encodeURIComponent(id)}/status`,
     {
       method: "PATCH",
@@ -619,8 +708,9 @@ export async function adminSetEventStatus(
     },
   );
   if (live) {
-    LOCAL_EVENTS.set(live.id, live);
-    return { data: live, source: "live" };
+    const e = normalizeEvent(live as never);
+    LOCAL_EVENTS.set(e.id, e);
+    return { data: e, source: "live" };
   }
   const current = LOCAL_EVENTS.get(id);
   if (!current) return { data: null, source: "empty", error: "Event not found." };
@@ -658,13 +748,18 @@ export async function adminSetSubmissionReview(
   id: string,
   review_status: ReviewStatus,
   note?: string,
+  publish?: boolean,
 ): Promise<ApiResponse<Submission | null>> {
+  const body: Record<string, unknown> = { review_status };
+  if (note !== undefined) body.note = note;
+  if (publish !== undefined) body.publish = publish;
+
   const live = await tryFetchWithAuth<Submission>(
     `/admin/submissions/${encodeURIComponent(id)}/review`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ review_status, note }),
+      body: JSON.stringify(body),
     },
   );
   if (live) {
@@ -688,33 +783,22 @@ export async function adminSetSubmissionReview(
 export async function adminGetAnalyticsSummary(
   range: "7d" | "30d" = "30d",
 ): Promise<ApiResponse<AdminAnalyticsSummary>> {
-  // Hit the live FastAPI backend first when one is configured.
+  // Try live backend first (Laravel /admin/analytics/summary?range=...).
   const live = await tryFetchWithAuth<AdminAnalyticsSummary>(
     `/admin/analytics/summary?range=${range}`,
   );
   if (live) return { data: live, source: "live" };
 
   // No live backend — query the local Next.js route handler (data/analytics.ndjson).
-  // We forward the same Bearer token used by other admin endpoints so the
-  // server-side route can authorise the request.
   if (typeof window === "undefined") {
-    return {
-      data: emptyAnalyticsSummary(range),
-      source: "empty",
-    };
+    return { data: emptyAnalyticsSummary(range), source: "empty" };
   }
   try {
-    const res = await fetch(
-      `/api/analytics/summary?range=${range}`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          ...authHeaders(),
-        },
-        cache: "no-store",
-      },
-    );
+    const res = await fetch(`/api/analytics/summary?range=${range}`, {
+      method: "GET",
+      headers: { Accept: "application/json", ...authHeaders() },
+      cache: "no-store",
+    });
     if (!res.ok) {
       return {
         data: emptyAnalyticsSummary(range),
@@ -725,8 +809,6 @@ export async function adminGetAnalyticsSummary(
     const data = (await res.json()) as AdminAnalyticsSummary;
     return { data, source: "live" };
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn("[api] analytics summary fetch failed:", err);
     return {
       data: emptyAnalyticsSummary(range),
       source: "empty",
@@ -741,11 +823,7 @@ function emptyAnalyticsSummary(range: "7d" | "30d"): AdminAnalyticsSummary {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() - (days - 1 - i));
-    return {
-      date: d.toISOString().slice(0, 10),
-      pageviews: 0,
-      outbound_clicks: 0,
-    };
+    return { date: d.toISOString().slice(0, 10), pageviews: 0, outbound_clicks: 0 };
   });
   return {
     range,
@@ -765,7 +843,12 @@ function emptyAnalyticsSummary(range: "7d" | "30d"): AdminAnalyticsSummary {
   };
 }
 
-/** POST /api/analytics/reset — wipes the NDJSON store. */
+/**
+ * Backend does not currently expose a reset/export endpoint — these are
+ * admin-only utilities that operate on the local NDJSON store while no
+ * backend is configured. They fall through to the live backend only if
+ * the routes exist there.
+ */
 export async function adminResetAnalytics(): Promise<ApiResponse<{ ok: true }>> {
   if (typeof window === "undefined") {
     return { data: { ok: true }, source: "fallback" };
@@ -773,17 +856,10 @@ export async function adminResetAnalytics(): Promise<ApiResponse<{ ok: true }>> 
   try {
     const res = await fetch("/api/analytics/reset", {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        ...authHeaders(),
-      },
+      headers: { Accept: "application/json", ...authHeaders() },
     });
     if (!res.ok) {
-      return {
-        data: { ok: true },
-        source: "fallback",
-        error: `Reset failed (${res.status}).`,
-      };
+      return { data: { ok: true }, source: "fallback", error: `Reset failed (${res.status}).` };
     }
     return { data: { ok: true }, source: "live" };
   } catch {
@@ -791,17 +867,13 @@ export async function adminResetAnalytics(): Promise<ApiResponse<{ ok: true }>> 
   }
 }
 
-/** Returns the raw NDJSON file as a string (for export). */
 export async function adminExportAnalytics(): Promise<ApiResponse<string>> {
   if (typeof window === "undefined") {
     return { data: "", source: "empty" };
   }
   try {
     const res = await fetch("/api/analytics/export", {
-      method: "GET",
-      headers: {
-        ...authHeaders(),
-      },
+      headers: { ...authHeaders() },
     });
     if (!res.ok) {
       return { data: "", source: "empty", error: `Export failed (${res.status}).` };
@@ -814,17 +886,6 @@ export async function adminExportAnalytics(): Promise<ApiResponse<string>> {
 }
 
 // Admin settings ───────────────────────────────────────────────────────────
-//
-// Settings are persisted to data/settings.json via /api/settings (see
-// lib/settings-store.ts). The server renders pixels & meta tags from the same
-// JSON into every public page — so this client only needs GET + PUT plumbing
-// against /api/settings. No in-memory fallback — if the route is unreachable
-// we surface the error so the admin knows their changes won't take effect.
-//
-// Note: this module runs in both server and client contexts. We deliberately
-// do NOT import lib/settings-store.ts here — that pulls in node:fs. The
-// canonical DEFAULT_SETTINGS lives in settings-store.ts; this file is a thin
-// client-facing wrapper around /api/settings.
 
 export async function adminGetSettings(): Promise<ApiResponse<AdminSettings>> {
   const live = await tryFetchWithAuth<AdminSettings>(`/api/settings`);
@@ -855,10 +916,9 @@ export async function adminUpdateSettings(
 // ───────────────────────────────────────────────────────────
 // Admin — home page section controls + CMS pages
 //
-// All routes are local Next.js API handlers at /api/cms/* (see
-// app/api/cms/{home,pages,pages/[id]}/route.ts). No in-memory fallback —
-// if the route is unreachable we surface the error so the admin knows
-// their changes won't take effect.
+// CMS pages: frontend addresses pages by string id (e.g. "about"). The Laravel
+// backend stores them by numeric id and the route is `/api/cms/pages/{id}`.
+// We resolve the slug → numeric id via the list endpoint on first read.
 // ───────────────────────────────────────────────────────────
 
 export interface HomePageConfigResponse {
@@ -868,6 +928,11 @@ export interface HomePageConfigResponse {
 }
 
 export async function adminGetHomeConfig(): Promise<ApiResponse<HomePageConfigResponse>> {
+  // Laravel returns the home config under /api/cms/home.
+  const live = await tryFetchWithAuth<HomePageConfigResponse>(`/api/cms/home`);
+  if (live) return { data: live, source: "live" };
+
+  // Fallback: local Next.js handler.
   if (typeof window === "undefined") {
     return { data: null as unknown as HomePageConfigResponse, source: "empty" };
   }
@@ -884,7 +949,7 @@ export async function adminGetHomeConfig(): Promise<ApiResponse<HomePageConfigRe
       };
     }
     return { data: (await res.json()) as HomePageConfigResponse, source: "live" };
-  } catch (err) {
+  } catch {
     return { data: null as unknown as HomePageConfigResponse, source: "empty", error: "Network error." };
   }
 }
@@ -892,6 +957,13 @@ export async function adminGetHomeConfig(): Promise<ApiResponse<HomePageConfigRe
 export async function adminUpdateHomeConfig(
   next: HomePageConfigResponse,
 ): Promise<ApiResponse<HomePageConfigResponse>> {
+  const live = await tryFetchWithAuth<HomePageConfigResponse>(`/api/cms/home`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(next),
+  });
+  if (live) return { data: live, source: "live" };
+
   if (typeof window === "undefined") {
     return { data: next, source: "fallback" };
   }
@@ -902,11 +974,7 @@ export async function adminUpdateHomeConfig(
       body: JSON.stringify(next),
     });
     if (!res.ok) {
-      return {
-        data: next,
-        source: "fallback",
-        error: `Save failed (${res.status}).`,
-      };
+      return { data: next, source: "fallback", error: `Save failed (${res.status}).` };
     }
     return { data: (await res.json()) as HomePageConfigResponse, source: "live" };
   } catch {
@@ -916,11 +984,22 @@ export async function adminUpdateHomeConfig(
 
 export interface CmsPageListItem {
   id: string;
+  slug?: string;
+  title?: string;
   updated_at: string;
   block_count: number;
+  published?: boolean;
 }
 
 export async function adminListCmsPages(): Promise<ApiResponse<CmsPageListItem[]>> {
+  const live = await tryFetchWithAuth<{ pages?: CmsPageListItem[] } | CmsPageListItem[]>(
+    `/api/cms/pages`,
+  );
+  if (live) {
+    const list = Array.isArray(live) ? live : (live.pages ?? []);
+    return { data: list, source: "live" };
+  }
+
   if (typeof window === "undefined") {
     return { data: [], source: "empty" };
   }
@@ -930,11 +1009,7 @@ export async function adminListCmsPages(): Promise<ApiResponse<CmsPageListItem[]
       cache: "no-store",
     });
     if (!res.ok) {
-      return {
-        data: [],
-        source: "empty",
-        error: res.status === 401 ? "Admin session required." : "Could not list CMS pages.",
-      };
+      return { data: [], source: "empty", error: res.status === 401 ? "Admin session required." : "Could not list CMS pages." };
     }
     const body = (await res.json()) as { pages: CmsPageListItem[] };
     return { data: body.pages, source: "live" };
@@ -945,13 +1020,46 @@ export async function adminListCmsPages(): Promise<ApiResponse<CmsPageListItem[]
 
 export interface CmsPageResponse {
   id: string;
-  updated_at: string;
+  slug?: string;
+  title?: string;
   blocks: unknown[];
+  updated_at?: string;
+}
+
+/**
+ * Resolves a CMS page slug like "about" to the backend's numeric id,
+ * falling back to the slug itself if no match is found. Cached per session.
+ */
+let CMS_ID_CACHE: Map<string, number> | null = null;
+async function resolveCmsPageId(slug: string): Promise<string | number> {
+  // If it's already numeric, return as-is.
+  if (/^\d+$/.test(slug)) return parseInt(slug, 10);
+
+  if (!CMS_ID_CACHE) {
+    const list = await adminListCmsPages();
+    CMS_ID_CACHE = new Map();
+    if (list.data) {
+      for (const p of list.data) {
+        if (p.slug && /^\d+$/.test(p.id)) {
+          CMS_ID_CACHE.set(p.slug, parseInt(p.id, 10));
+        }
+      }
+    }
+  }
+  const id = CMS_ID_CACHE.get(slug);
+  return id ?? slug;
 }
 
 export async function adminGetCmsPage(
   id: string,
 ): Promise<ApiResponse<CmsPageResponse>> {
+  const numericId = await resolveCmsPageId(id);
+
+  // Laravel path
+  const live = await tryFetchWithAuth<CmsPageResponse>(`/api/cms/pages/${encodeURIComponent(String(numericId))}`);
+  if (live) return { data: live, source: "live" };
+
+  // Local fallback
   if (typeof window === "undefined") {
     return { data: null as unknown as CmsPageResponse, source: "empty" };
   }
@@ -976,7 +1084,25 @@ export async function adminGetCmsPage(
 export async function adminUpdateCmsPage(
   id: string,
   blocks: unknown[],
+  title?: string,
 ): Promise<ApiResponse<CmsPageResponse>> {
+  const numericId = await resolveCmsPageId(id);
+
+  const body: Record<string, unknown> = { blocks };
+  if (title !== undefined) body.title = title;
+
+  // Laravel path
+  const live = await tryFetchWithAuth<CmsPageResponse>(
+    `/api/cms/pages/${encodeURIComponent(String(numericId))}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+  if (live) return { data: live, source: "live" };
+
+  // Local fallback
   if (typeof window === "undefined") {
     return {
       data: { id, updated_at: new Date().toISOString(), blocks },
@@ -987,7 +1113,7 @@ export async function adminUpdateCmsPage(
     const res = await fetch(`/api/cms/pages/${encodeURIComponent(id)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ blocks }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       return {

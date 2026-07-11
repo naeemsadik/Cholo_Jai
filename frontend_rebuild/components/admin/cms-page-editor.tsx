@@ -508,6 +508,7 @@ function BlockEditor({
 export function CmsPageEditor({ pageId }: { pageId: string }) {
   const [initialBlocks, setInitialBlocks] = React.useState<CmsBlock[] | null>(null);
   const [blocks, setBlocks] = React.useState<CmsBlock[]>([]);
+  const [pageTitle, setPageTitle] = React.useState<string>("");
   const [loading, setLoading] = React.useState(true);
   const [saveState, setSaveState] = React.useState<SaveState>("saved");
   const [lastSavedAt, setLastSavedAt] = React.useState<string | null>(null);
@@ -525,6 +526,8 @@ export function CmsPageEditor({ pageId }: { pageId: string }) {
         const loaded = res.data.blocks as CmsBlock[];
         setInitialBlocks(loaded);
         setBlocks(loaded);
+        // Title comes from the backend; fall back to a derived display label.
+        setPageTitle(res.data.title ?? pageId);
         setLastSavedAt(res.data.updated_at ?? null);
       } else {
         setLoadError(res.error ?? "Could not load page.");
@@ -541,7 +544,7 @@ export function CmsPageEditor({ pageId }: { pageId: string }) {
     if (saveState !== "dirty") return;
     const t = setTimeout(async () => {
       setSaveState("saving");
-      const res = await adminUpdateCmsPage(pageId, blocks);
+      const res = await adminUpdateCmsPage(pageId, blocks, pageTitle);
       if (res.data) {
         setInitialBlocks(res.data.blocks as CmsBlock[]);
         setBlocks(res.data.blocks as CmsBlock[]);
@@ -557,7 +560,7 @@ export function CmsPageEditor({ pageId }: { pageId: string }) {
       }
     }, AUTOSAVE_DELAY_MS);
     return () => clearTimeout(t);
-  }, [saveState, blocks, pageId]);
+  }, [saveState, blocks, pageId, pageTitle]);
 
   function markDirty(next: CmsBlock[]) {
     setBlocks(next);
@@ -595,7 +598,7 @@ export function CmsPageEditor({ pageId }: { pageId: string }) {
   async function manualSave() {
     if (saveState === "saving") return;
     setSaveState("saving");
-    const res = await adminUpdateCmsPage(pageId, blocks);
+    const res = await adminUpdateCmsPage(pageId, blocks, pageTitle);
     if (res.data) {
       setInitialBlocks(res.data.blocks as CmsBlock[]);
       setBlocks(res.data.blocks as CmsBlock[]);
@@ -656,14 +659,16 @@ export function CmsPageEditor({ pageId }: { pageId: string }) {
     );
   }
 
-  const pageTitle = pageId === "about" ? "About" : pageId.charAt(0).toUpperCase() + pageId.slice(1);
+  const displayTitle =
+    pageTitle ||
+    (pageId === "about" ? "About" : pageId.charAt(0).toUpperCase() + pageId.slice(1));
   const publicPath = pageId === "about" ? "/about" : `/${pageId}`;
 
   return (
     <>
       <AdminSectionHeader
         eyebrow={`CMS · ${pageId}`}
-        title={pageTitle}
+        title={displayTitle}
         description="Edit the public page's content blocks. Bangla fields are optional — readers will see the English fallback when a block has no Bangla copy. Changes auto-save."
         actions={
           <div className="flex items-center gap-2">
