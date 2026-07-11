@@ -27,12 +27,17 @@ RUN apt-get update \
 COPY composer.json composer.lock ./
 
 # Install vendor (with autoloader + scripts — vendor/ is .gitignored,
-# so this MUST run in the image).
+# so this MUST run in the image). --ignore-platform-reqs is needed
+# because the fpm-bookworm image doesn't ship every extension the
+# composer.lock declares (e.g. ext-curl, ext-memcached, ext-apcu). The
+# runtime image installs them properly at container start via the
+# `apt-get install php-curl ...` step in docker/entrypoint.sh.
 RUN composer install \
         --no-dev \
         --prefer-dist \
         --no-interaction \
-        --optimize-autoloader
+        --optimize-autoloader \
+        --ignore-platform-reqs
 
 # Now copy the rest of the source.
 COPY . .
