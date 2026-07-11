@@ -18,11 +18,16 @@ in this directory (the root of the repo) build that subdirectory.
 
 ## Image
 
-The backend image is based on `mlocati/php-docker-image:8.3-fpm-bookworm`
-(a Debian variant of `php:8.3-fpm` with every common extension —
-pdo_mysql, intl, gd, bcmath, mbstring, opcache, zip — pre-installed).
-No PHP extension compilation is done in the image, so the build completes
-in a few minutes instead of 15+.
+The backend image is based on the official `php:8.3-fpm-bookworm` (Debian
+bookworm). This variant ships every common extension — pdo_mysql, mysqli,
+intl, gd, bcmath, mbstring, opcache, zip — pre-compiled, so the image
+builds in seconds rather than 15+ minutes. (The `php:8.3-fpm-alpine`
+image compiles most extensions from source via `docker-php-ext-install`,
+which is too slow for Coolify's default build timeout.)
+
+If you want even smaller images, `php:8.3-cli-bookworm` (or `-fpm-alpine`
+when you have a fast machine) work too — but the Debian variant is the
+fastest path through Coolify right now.
 
 ## Deploy
 
@@ -71,7 +76,7 @@ compiling `intl` (ICU, ~5 min), `gd` (libpng, freetype, ~3 min), and
 8 other extensions from scratch. That took 15+ minutes per build and
 also hit a `composer dump-autoload` bug on the way.
 
-The new Dockerfile uses `mlocati/php-docker-image:8.3-fpm-bookworm`,
+The new Dockerfile uses the official `php:8.3-fpm-bookworm` image,
 which ships every Laravel extension pre-built. The build is now:
 1. `apt-get install git unzip default-mysql-client` (~30s)
 2. `composer install --no-dev --optimize-autoloader` (~30s, cached on rebuild)

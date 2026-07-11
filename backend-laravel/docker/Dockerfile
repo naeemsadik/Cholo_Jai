@@ -1,15 +1,18 @@
 # Cholo Jai — Laravel backend image
 #
-# Use mlocati/php-docker-image: a Debian-based PHP image with every
-# common extension (pdo_mysql, intl, gd, bcmath, mbstring, opcache,
-# zip) already installed. We add only what Laravel needs: composer
-# (built in) + the project source.
+# Use the official php:8.3-fpm-bookworm image. The bookworm variant
+# ships every common extension (pdo_mysql, mysqli, intl, gd, bcmath,
+# mbstring, opcache, zip) pre-compiled, so this builds in seconds
+# rather than the 15+ minutes a from-source Alpine build takes.
+# (The php:8.3-fpm-alpine image builds almost every extension from
+# source via docker-php-ext-install which is too slow for CI.)
 
-FROM mlocati/php-docker-image:8.3-fpm-bookworm
+FROM php:8.3-fpm-bookworm
 
 WORKDIR /var/www/html
 
-# Install system tools we need at runtime. No PHP extension compilation.
+# System tools we need at runtime. PHP extensions are already in the
+# base image — no compilation here.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git \
