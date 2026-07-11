@@ -2,6 +2,16 @@
 
 Laravel 11 + PHP 8.3 + MySQL 8 backend for the Cholo Jai event-discovery platform.
 
+## Quick links (after deploy)
+
+| URL | Purpose |
+|---|---|
+| `http://localhost:8000/up` | Liveness probe (returns "Application up") |
+| `http://localhost:8000/events` | Public event listing |
+| `http://localhost:8000/docs/api` | **Scramble / Swagger UI** — browse and try every endpoint |
+| `http://localhost:8000/docs/api.json` | OpenAPI 3.1 spec |
+| `http://localhost:8080` | phpMyAdmin (MySQL GUI) — bound to localhost only |
+
 ## Wiring
 
 - **Frontend** (`../frontend_rebuild/`) → points `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`
@@ -9,6 +19,25 @@ Laravel 11 + PHP 8.3 + MySQL 8 backend for the Cholo Jai event-discovery platfor
 - **Admin endpoints** live at `/admin/*`, plus a small set at `/api/*` for settings/CMS as expected by the admin UI.
 - **Auth**: Laravel Sanctum personal-access tokens (`Authorization: Bearer <token>`).
 - All admin routes are protected by `auth:sanctum` + `ensure.admin`.
+
+## Deploy on a Coolify VPS
+
+1. Copy the contents of this `backend-laravel/` folder to your VPS (or
+   point Coolify's git-source at this directory).
+2. Create a `.env` file next to `docker-compose.yml` on the VPS — copy
+   `.env.coolify.example` and fill in the secrets.
+3. In Coolify, add a new **Docker Compose** resource pointing at this
+   directory. Coolify will read `docker-compose.yml`, set the env vars
+   you paste in, build the images, and bring up the stack.
+4. Once `cholo-jai-backend` reports healthy:
+   - Public API: `https://<your-domain>/...`
+   - Swagger UI: `https://<your-domain>/docs/api`
+   - phpMyAdmin: expose through Coolify's port mapping on 8080 if you
+     want browser access; otherwise tunnel in via SSH.
+
+The container's `docker/entrypoint.sh` waits for MySQL to be ready,
+generates `APP_KEY` if missing, runs migrations, and (optionally) seeds
+the database when `RUN_SEED=true`.
 
 ## Local development (Docker)
 
