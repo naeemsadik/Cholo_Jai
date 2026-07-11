@@ -12,12 +12,15 @@ FROM php:8.3-fpm-bookworm
 WORKDIR /var/www/html
 
 # System tools we need at runtime. PHP extensions are already in the
-# base image — no compilation here.
+# base image — no compilation here. We also install Composer 2.x from
+# the official image (the php:fpm tag doesn't include it).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git \
         unzip \
         default-mysql-client \
+        curl \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer --version=2.7.7 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy ONLY composer manifests first so Docker can cache this layer.
