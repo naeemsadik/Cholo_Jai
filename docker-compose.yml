@@ -1,15 +1,20 @@
-# Cholo Jai — Laravel backend (LOCAL DEV variant).
+# Cholo Jai — root-level Compose for Coolify / VPS deployment.
 #
-# For VPS / Coolify deployment, use the canonical docker-compose.yml at
-# the repo root (`../docker-compose.yml`) — that's what production uses.
-# This file is kept for local development of the backend in isolation:
-#   cd backend-laravel && docker compose up -d
+# This file lives at the repository root and pulls in the Laravel app
+# from the `backend-laravel/` subdirectory. Deploy from the repo root
+# with `docker compose up -d` (or point Coolify's Docker Compose resource
+# at the repo root).
 #
-# It brings up MySQL 8.0, the Laravel php-fpm app, and nginx serving it
-# on port 8000. phpMyAdmin runs on 127.0.0.1:8080.
+# Services:
+#   - db          MySQL 8.0 with utf8mb4 + Asia/Dhaka timezone
+#   - backend     Laravel 11 php-fpm app (built from backend-laravel/)
+#   - web         nginx:alpine serving PHP-FPM on :8000
+#   - phpmyadmin  DB admin UI on 127.0.0.1:8080 (tunnel in via SSH)
 #
-# Fill in the secrets in `.env` (see `.env.coolify.example`) before
-# `docker compose up -d`.
+# Fill in the secrets in `.env` next to this file (copy from
+# backend-laravel/.env.coolify.example) before `docker compose up -d`.
+# Coolify will also let you set these as Service → Environment
+# Variables in its UI instead of mounting a .env file.
 
 name: cholo-jai-backend
 
@@ -24,7 +29,7 @@ services:
       - --default-time-zone=+06:00
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./docker/mysql.cnf:/etc/mysql/conf.d/cholo.cnf:ro
+      - ./backend-laravel/docker/mysql.cnf:/etc/mysql/conf.d/cholo.cnf:ro
     environment:
       MYSQL_ROOT_PASSWORD: '${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env or Coolify secrets}'
       MYSQL_DATABASE: '${MYSQL_DATABASE:-cholo_jai}'
@@ -47,7 +52,7 @@ services:
 
   backend:
     build:
-      context: .
+      context: ./backend-laravel
       dockerfile: docker/Dockerfile
     image: cholo-jai-backend:latest
     container_name: cholo-jai-backend
@@ -59,7 +64,7 @@ services:
       # ── Laravel core ──
       APP_NAME: 'CholoJai'
       APP_ENV: '${APP_ENV:-production}'
-      APP_KEY: '${APP_KEY:?generate with: php artisan key:generate --show}'
+      APP_KEY: '${APP_KEY:?generate with: docker compose run --rm backend php artisan key:generate --show}'
       APP_DEBUG: '${APP_DEBUG:-false}'
       APP_URL: '${APP_URL:-http://localhost:8000}'
       LOG_CHANNEL: 'stack'
@@ -126,7 +131,7 @@ services:
       # directly from the VPS shell.
       - '8000:80'
     volumes:
-      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./backend-laravel/docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - uploads_data:/var/www/html/storage/app/public:ro
     depends_on:
       - backend
@@ -146,7 +151,7 @@ services:
     restart: unless-stopped
     ports:
       # Bind to localhost only — Coolify exposes via reverse proxy if
-      # needed. Comment out the 127.0.0.1: prefix to expose publicly.
+      # needed. Remove the 127.0.0.1: prefix to expose publicly.
       - '127.0.0.1:8080:80'
     environment:
       PMA_HOST: 'db'
