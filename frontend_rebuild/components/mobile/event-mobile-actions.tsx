@@ -24,12 +24,13 @@ interface EventMobileActionsProps {
 // Always visible <lg; the outbound CTA is the primary action.
 export function EventMobileActions({ event }: EventMobileActionsProps) {
   const priceLabel = formatPrice(event.price_type, event.price_note);
-  const eventUrl = React.useMemo(
-    () => (typeof window !== "undefined"
-      ? `${window.location.origin}/events/${event.slug}`
-      : `/events/${event.slug}`),
-    [event.slug],
-  );
+  const eventPath = React.useMemo(() => `/events/${event.slug}`, [event.slug]);
+  const [eventUrl, setEventUrl] = React.useState(eventPath);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    setEventUrl(`${window.location.origin}${eventPath}`);
+  }, [eventPath]);
 
   async function copyLink() {
     try {

@@ -12,7 +12,13 @@ interface ShareButtonsProps {
 
 export function ShareButtons({ title, slug, startDate }: ShareButtonsProps) {
   const [copied, setCopied] = React.useState(false);
-  const url = typeof window !== "undefined" ? `${window.location.origin}/events/${slug}` : `/events/${slug}`;
+  const eventPath = React.useMemo(() => `/events/${slug}`, [slug]);
+  const [url, setUrl] = React.useState(eventPath);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    setUrl(`${window.location.origin}${eventPath}`);
+  }, [eventPath]);
 
   async function copy() {
     try {

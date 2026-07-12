@@ -147,7 +147,7 @@ export function EventSchema({ event }: { event: EventSchemaEvent }) {
     endDate: endISO,
     eventStatus: mapEventStatus(event.status),
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
-    image: [`${SITE_URL}${event.poster_url}`],
+    image: [absoluteUrl(event.poster_url)],
     location: {
       "@type": "Place",
       name: event.venue_name,
@@ -256,4 +256,10 @@ function addHour(time: string): string {
   const [h, m, s] = time.split(":").map((x) => parseInt(x, 10));
   const next = ((h ?? 0) + 1) % 24;
   return `${String(next).padStart(2, "0")}:${String(m ?? 0).padStart(2, "0")}${s != null ? `:${String(s).padStart(2, "0")}` : ""}`;
+}
+
+function absoluteUrl(url: string): string {
+  return url.startsWith("http://") || url.startsWith("https://")
+    ? url
+    : `${SITE_URL}${url}`;
 }
