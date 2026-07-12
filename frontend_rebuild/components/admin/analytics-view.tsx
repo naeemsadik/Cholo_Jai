@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { EventAnalyticsPanel } from "./event-analytics-panel";
 import { adminGetAnalyticsSummary } from "@/lib/api";
 import type { AdminAnalyticsSummary } from "@/lib/types";
 import { AdminSectionHeader } from "@/components/admin/admin-shell";
@@ -46,6 +48,7 @@ export function AnalyticsView() {
   const searchParams = useSearchParams();
   const range = (searchParams.get("range") as Range) === "7d" ? "7d" : "30d";
   const [summary, setSummary] = React.useState<AdminAnalyticsSummary | null>(null);
+  const [selectedEventId, setSelectedEventId] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -227,6 +230,7 @@ export function AnalyticsView() {
                 title: e.title,
                 href: `/events/${e.slug}`,
                 value: e.views,
+                onClick: (id) => setSelectedEventId(id),
               }))}
               emptyText="No event views yet."
               colorClass="bg-ember-600"
@@ -240,6 +244,7 @@ export function AnalyticsView() {
                 title: e.title,
                 href: `/events/${e.slug}`,
                 value: e.clicks,
+                onClick: (id) => setSelectedEventId(id),
               }))}
               emptyText="No outbound clicks yet."
               colorClass="bg-accent-600"
@@ -360,6 +365,14 @@ export function AnalyticsView() {
           )}
         </>
       )}
+
+      <Dialog open={selectedEventId !== null} onOpenChange={(open) => !open && setSelectedEventId(null)}>
+        <DialogContent className="max-w-4xl bg-paper">
+          {selectedEventId && (
+            <EventAnalyticsPanel eventId={selectedEventId} onClose={() => setSelectedEventId(null)} />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -442,6 +455,7 @@ function TopCard({
     value: number;
     suffix?: string;
     showBar?: boolean;
+    onClick?: (key: string) => void;
   }[];
   href: string;
   emptyText: string;
@@ -472,13 +486,22 @@ function TopCard({
             return (
               <li key={r.key}>
                 <div className="flex items-baseline justify-between gap-2 text-sm">
-                  <Link
-                    href={r.href}
-                    target="_blank"
-                    className="truncate text-ink hover:text-accent-700 transition-colors"
-                  >
-                    {r.title}
-                  </Link>
+                  {r.onClick ? (
+                    <button
+                      onClick={() => r.onClick?.(r.key)}
+                      className="truncate text-ink hover:text-accent-700 transition-colors text-left font-medium max-w-[200px]"
+                    >
+                      {r.title}
+                    </button>
+                  ) : (
+                    <Link
+                      href={r.href}
+                      target="_blank"
+                      className="truncate text-ink hover:text-accent-700 transition-colors"
+                    >
+                      {r.title}
+                    </Link>
+                  )}
                   <span className="font-mono text-xs text-ink-500 tabular-nums">
                     {r.value.toLocaleString()}
                     {r.suffix ?? ""}

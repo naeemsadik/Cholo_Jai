@@ -26,6 +26,7 @@ import type {
   AnalyticsTopSubArea,
   AnalyticsTrafficSource,
   AnalyticsFunnel,
+  EventAnalyticsDetail,
 } from "./analytics-types";
 import { FALLBACK_EVENTS } from "./fallback-data";
 import { CATEGORIES } from "./categories";
@@ -158,6 +159,110 @@ export async function resetAll(): Promise<void> {
 export async function summary(range: AnalyticsRange): Promise<AdminAnalyticsSummary> {
   const events = await readAll();
   return aggregate(events, range);
+}
+
+export async function eventDetail(
+  eventId: string,
+  range: AnalyticsRange,
+): Promise<EventAnalyticsDetail> {
+  const events = await readAll();
+  
+  // Find event in fallback/local list to get title and slug
+  const fallback = FALLBACK_EVENTS.find((e) => e.id === eventId);
+  const title = fallback?.title ?? `Event #${eventId}`;
+  const slug = fallback?.slug ?? eventId;
+
+  const days = range === "7d" ? 7 : 30;
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - (days - 1));
+
+  // 1. Filter to range and eventId
+  const inRange = events.filter((e) => {
+    const t = new Date(e.ts);
+    return !isNaN(t.getTime()) && t >= cutoff && e.event_id === eventId;
+  });
+
+  // 2. Daily buckets
+  const dailyBuckets = new Map<string, { pv: number; clicks: number }>();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(cutoff);
+    d.setDate(d.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    dailyBuckets.set(key, { pv: 0, clicks: 0 });
+  }
+  for (const e of inRange) {
+    const key = e.ts.slice(0, 10);
+    const bucket = dailyBuckets.get(key);
+    if (!bucket) continue;
+    if (e.type === "page_view") bucket.pv += 1;
+    else if (e.type === "outbound_click") bucket.clicks += 1;
+  }
+  const daily: AnalyticsDailyPoint[] = Array.from(dailyBuckets.entries()).map(
+    ([date, { pv, clicks }]) => ({
+      date,
+      pageviews: pv,
+      outbound_clicks: clicks,
+    }),
+  );
+
+  // 3. Totals + unique sessions
+  const total_pageviews = inRange.filter((e) => e.type === "page_view").length;
+  const total_outbound_clicks = inRange.filter((e) => e.type === "outbound_click").length;
+  const sessionIds = new Set(inRange.map((e) => e.session_id));
+  const conversion_rate = total_pageviews > 0 ? total_outbound_clicks / total_pageviews : 0;
+
+  // 4. Traffic sources — utm_source first, then ref host, else "(direct)"
+  const sourceCounts = new Map<string, { pv: number; clicks: number }>();
+  for (const e of inRange) {
+    let source: string | null = null;
+    if (e.utm_source) {
+      source = e.utm_source.toLowerCase();
+    } else if (e.ref) {
+      try {
+        source = new URL(e.ref).hostname.replace(/^www\./, "");
+      } catch {
+        source = "(other)";
+      }
+    } else {
+      source = "(direct)";
+    }
+    const bucket = sourceCounts.get(source) ?? { pv: 0, clicks: 0 };
+    if (e.type === "page_view") bucket.pv += 1;
+    else if (e.type === "outbound_click") bucket.clicks += 1;
+    sourceCounts.set(source, bucket);
+  }
+  const traffic_sources: AnalyticsTrafficSource[] = Array.from(sourceCounts.entries())
+    .map(([source, { pv, clicks }]) => ({ source, pageviews: pv, outbound_clicks: clicks }))
+    .sort((a, b) => b.pageviews - a.pageviews)
+    .slice(0, 5);
+
+  // 5. Recent activity — last 20 events (scoped to eventId, no range filter)
+  const recent: AnalyticsRecentEvent[] = events
+    .filter((e) => e.event_id === eventId)
+    .sort((a, b) => (a.ts < b.ts ? 1 : -1))
+    .slice(0, 20)
+    .map((e) => ({
+      ts: e.ts,
+      type: e.type,
+      path: e.path ?? null,
+      event_id: e.event_id ?? null,
+      ref: e.ref ?? null,
+    }));
+
+  return {
+    event_id: eventId,
+    title,
+    slug,
+    range,
+    total_pageviews,
+    total_outbound_clicks,
+    unique_sessions: sessionIds.size,
+    conversion_rate,
+    daily,
+    traffic_sources,
+    recent,
+  };
 }
 
 /**

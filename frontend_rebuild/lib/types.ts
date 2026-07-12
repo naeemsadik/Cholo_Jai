@@ -229,6 +229,20 @@ export interface AdminAnalyticsSummary {
   email_signups: number; // FR-94
 }
 
+export interface EventAnalyticsDetail {
+  event_id: string;
+  title: string;
+  slug: string;
+  range: "7d" | "30d";
+  total_pageviews: number;
+  total_outbound_clicks: number;
+  unique_sessions: number;
+  conversion_rate: number;
+  daily: AnalyticsDailyPoint[];
+  traffic_sources: AnalyticsTrafficSource[];
+  recent: AnalyticsRecentEvent[];
+}
+
 // Tracking pixels & raw scripts injected into the public site's <head>/<body>.
 // Authored from /admin/settings, persisted to data/settings.json, and emitted
 // by components/seo/injected-{head,body}.tsx on every public page render.

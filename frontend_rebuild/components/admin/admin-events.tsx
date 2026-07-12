@@ -54,6 +54,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { AdminSectionHeader } from "@/components/admin/admin-shell";
 import { ALL_EVENT_STATUSES } from "@/lib/event-status";
 import { cn } from "@/lib/utils";
+import { EventAnalyticsPanel } from "./event-analytics-panel";
 
 const ALL_FILTER = "all" as const;
 type StatusFilter = typeof ALL_FILTER | EventStatus;
@@ -75,6 +76,7 @@ export function AdminEvents() {
   const [search, setSearch] = React.useState("");
   const [filter, setFilter] = React.useState<StatusFilter>(ALL_FILTER);
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
+  const [statsEventId, setStatsEventId] = React.useState<string | null>(null);
 
   const debouncedSearch = useDebounced(search, 200);
 
@@ -316,6 +318,7 @@ export function AdminEvents() {
             onEdit={(e) => router.push(`/admin/events/${e.slug}`)}
             onSetStatus={setStatus}
             onDelete={onDelete}
+            onViewStats={(e) => setStatsEventId(e.id)}
           />
         </TabsContent>
 
@@ -354,6 +357,14 @@ export function AdminEvents() {
           />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={statsEventId !== null} onOpenChange={(open) => !open && setStatsEventId(null)}>
+        <DialogContent className="max-w-4xl bg-paper">
+          {statsEventId && (
+            <EventAnalyticsPanel eventId={statsEventId} onClose={() => setStatsEventId(null)} />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -493,6 +504,7 @@ function EventsTable({
   onEdit,
   onSetStatus,
   onDelete,
+  onViewStats,
 }: {
   loading: boolean;
   rows: Event[];
@@ -503,6 +515,7 @@ function EventsTable({
   onEdit: (e: Event) => void;
   onSetStatus: (e: Event, s: EventStatus) => void;
   onDelete: (e: Event) => void;
+  onViewStats: (e: Event) => void;
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-rule bg-paper">
@@ -553,6 +566,7 @@ function EventsTable({
                   onEdit={() => onEdit(e)}
                   onSetStatus={(s) => onSetStatus(e, s)}
                   onDelete={() => onDelete(e)}
+                  onViewStats={() => onViewStats(e)}
                 />
               ))
             )}
@@ -570,6 +584,7 @@ function EventRow({
   onEdit,
   onSetStatus,
   onDelete,
+  onViewStats,
 }: {
   event: Event;
   isSelected: boolean;
@@ -577,6 +592,7 @@ function EventRow({
   onEdit: () => void;
   onSetStatus: (s: EventStatus) => void;
   onDelete: () => void;
+  onViewStats: () => void;
 }) {
   const catName = (slug: string) =>
     CATEGORIES.find((c) => c.slug === slug)?.name ?? slug;
@@ -644,6 +660,10 @@ function EventRow({
               <DropdownMenuItem onClick={onEdit}>
                 <Pencil className="h-4 w-4" />
                 Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onViewStats}>
+                <BarChart3 className="h-4 w-4" />
+                View stats
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {event.status === "published" ? (

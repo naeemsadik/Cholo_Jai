@@ -67,6 +67,7 @@ Route::middleware(['auth:sanctum', 'ensure.admin'])->prefix('admin')->group(func
     Route::patch('/submissions/{submission}/review', [AdminSubmissionController::class, 'review'])->whereNumber('submission');
 
     Route::get('/analytics/summary', [AdminAnalyticsController::class, 'summary']);
+    Route::get('/analytics/event/{eventId}', [AdminAnalyticsController::class, 'eventDetail'])->whereNumber('eventId');
 
     Route::post('/uploads', [AdminUploadController::class, 'store']);
 });

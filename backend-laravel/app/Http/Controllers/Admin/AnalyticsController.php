@@ -33,6 +33,21 @@ class AnalyticsController extends Controller
         ));
     }
 
+    public function eventDetail(Request $request, int $eventId): JsonResponse
+    {
+        $range = $request->query('range', '30d');
+        if (! in_array($range, ['7d', '30d'], true)) {
+            $range = '30d';
+        }
+        $days = $range === '7d' ? 7 : 30;
+
+        return response()->json(Cache::remember(
+            'analytics:event:'.$eventId.':'.$range,
+            60,
+            fn () => $this->buildEventSummary($days, $range, $eventId)
+        ));
+    }
+
     private function buildSummary(int $days, string $range): array
     {
         $start = Carbon::now()->subDays($days - 1)->startOfDay();
@@ -236,6 +251,104 @@ class AnalyticsController extends Controller
             'recent' => $recent,
             'form_completions' => $formCompletions,
             'email_signups' => $emailSignups,
+        ];
+    }
+
+    private function buildEventSummary(int $days, string $range, int $eventId): array
+    {
+        $event = \App\Models\Event::query()->find($eventId);
+        if (! $event) {
+            abort(404, 'Event not found');
+        }
+
+        $start = Carbon::now()->subDays($days - 1)->startOfDay();
+        $end = Carbon::now()->endOfDay();
+
+        // ── Totals ──
+        $base = DB::table('analytics_events')
+            ->where('event_id', $eventId)
+            ->whereBetween('created_at', [$start, $end]);
+
+        $totalPageviews = (clone $base)->where('event_type', 'page_view')->count();
+        $totalOutboundClicks = (clone $base)->where('event_type', 'outbound_click')->count();
+
+        $uniqueSessions = (clone $base)
+            ->whereIn('event_type', ['page_view', 'outbound_click'])
+            ->distinct('session_id')
+            ->count('session_id');
+
+        $conversionRate = $totalPageviews > 0
+            ? round($totalOutboundClicks / $totalPageviews, 4)
+            : 0.0;
+
+        // ── Daily ──
+        $daily = [];
+        for ($i = 0; $i < $days; $i++) {
+            $day = $start->copy()->addDays($i)->toDateString();
+            $dailyStart = $day.' 00:00:00';
+            $dailyEnd = $day.' 23:59:59';
+
+            $daily[] = [
+                'date' => $day,
+                'pageviews' => (clone $base)
+                    ->where('event_type', 'page_view')
+                    ->whereBetween('created_at', [$dailyStart, $dailyEnd])
+                    ->count(),
+                'outbound_clicks' => (clone $base)
+                    ->where('event_type', 'outbound_click')
+                    ->whereBetween('created_at', [$dailyStart, $dailyEnd])
+                    ->count(),
+            ];
+        }
+
+        // ── Traffic sources ──
+        $trafficRows = (clone $base)
+            ->whereNotNull('utm_source')
+            ->select('utm_source', DB::raw('count(*) as pv'))
+            ->where('event_type', 'page_view')
+            ->groupBy('utm_source')
+            ->orderByDesc('pv')
+            ->limit(5)
+            ->get();
+
+        $trafficSources = $trafficRows->map(fn ($row) => [
+            'source' => $row->utm_source,
+            'pageviews' => (int) $row->pv,
+            'outbound_clicks' => (int) DB::table('analytics_events')
+                ->where('event_id', $eventId)
+                ->where('event_type', 'outbound_click')
+                ->whereNotNull('utm_source')
+                ->where('utm_source', $row->utm_source)
+                ->whereBetween('created_at', [$start, $end])
+                ->count(),
+        ])->all();
+
+        // ── Recent ──
+        $recentRows = (clone $base)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get(['event_type', 'path', 'event_id', 'ref', 'created_at']);
+
+        $recent = $recentRows->map(fn ($r) => [
+            'ts' => $r->created_at,
+            'type' => $r->event_type,
+            'path' => $r->path,
+            'event_id' => $r->event_id,
+            'ref' => $r->ref,
+        ])->all();
+
+        return [
+            'event_id' => (string) $eventId,
+            'title' => $event->title,
+            'slug' => $event->slug,
+            'range' => $range,
+            'total_pageviews' => $totalPageviews,
+            'total_outbound_clicks' => $totalOutboundClicks,
+            'unique_sessions' => $uniqueSessions,
+            'conversion_rate' => $conversionRate,
+            'daily' => $daily,
+            'traffic_sources' => $trafficSources,
+            'recent' => $recent,
         ];
     }
 }

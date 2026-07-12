@@ -132,3 +132,17 @@ export interface AdminAnalyticsSummary {
   funnel: AnalyticsFunnel;
   recent: AnalyticsRecentEvent[];
 }
+
+export interface EventAnalyticsDetail {
+  event_id: string;
+  title: string;
+  slug: string;
+  range: AnalyticsRange;
+  total_pageviews: number;
+  total_outbound_clicks: number;
+  unique_sessions: number;
+  conversion_rate: number;
+  daily: AnalyticsDailyPoint[];
+  traffic_sources: AnalyticsTrafficSource[];
+  recent: AnalyticsRecentEvent[];
+}

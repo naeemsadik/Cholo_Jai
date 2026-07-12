@@ -18,6 +18,7 @@ import type {
   EmailSubscriber,
   AnalyticsEvent,
   AdminAnalyticsSummary,
+  EventAnalyticsDetail,
   AdminSettings,
 } from "./types";
 import { FALLBACK_EVENTS, FALLBACK_LOOKUPS, FALLBACK_SUBMISSIONS } from "./fallback-data";
@@ -925,6 +926,67 @@ function emptyAnalyticsSummary(range: "7d" | "30d"): AdminAnalyticsSummary {
     traffic_sources: [],
     form_completions: 0,
     email_signups: 0,
+  };
+}
+
+export async function adminGetEventAnalytics(
+  eventId: string,
+  range: "7d" | "30d" = "30d",
+): Promise<ApiResponse<EventAnalyticsDetail>> {
+  // Try live backend first (Laravel /admin/analytics/event/{eventId}?range=...).
+  const live = await tryFetchWithAuth<EventAnalyticsDetail>(
+    `/admin/analytics/event/${eventId}?range=${range}`,
+  );
+  if (live) return { data: live, source: "live" };
+
+  // No live backend — query the local Next.js route handler (data/analytics.ndjson).
+  if (typeof window === "undefined") {
+    return { data: emptyEventAnalyticsDetail(eventId, range), source: "empty" };
+  }
+  try {
+    const res = await fetch(`/api/analytics/event/${eventId}?range=${range}`, {
+      method: "GET",
+      headers: { Accept: "application/json", ...authHeaders() },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      return {
+        data: emptyEventAnalyticsDetail(eventId, range),
+        source: "empty",
+        error: res.status === 401 ? "Admin session required." : "Analytics unavailable.",
+      };
+    }
+    const data = (await res.json()) as EventAnalyticsDetail;
+    return { data, source: "live" };
+  } catch (err) {
+    return {
+      data: emptyEventAnalyticsDetail(eventId, range),
+      source: "empty",
+      error: "Could not load analytics.",
+    };
+  }
+}
+
+function emptyEventAnalyticsDetail(eventId: string, range: "7d" | "30d"): EventAnalyticsDetail {
+  const days = range === "7d" ? 7 : 30;
+  const daily: EventAnalyticsDetail["daily"] = Array.from({ length: days }).map((_, i) => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - (days - 1 - i));
+    return { date: d.toISOString().slice(0, 10), pageviews: 0, outbound_clicks: 0 };
+  });
+  return {
+    event_id: eventId,
+    title: `Event #${eventId}`,
+    slug: eventId,
+    range,
+    total_pageviews: 0,
+    total_outbound_clicks: 0,
+    unique_sessions: 0,
+    conversion_rate: 0,
+    daily,
+    traffic_sources: [],
+    recent: [],
   };
 }
 
