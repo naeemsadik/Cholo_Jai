@@ -27,20 +27,13 @@ services:
       - ./docker/mysql.cnf:/etc/mysql/conf.d/cholo.cnf:ro
     environment:
       MYSQL_ROOT_PASSWORD: '${MYSQL_ROOT_PASSWORD:-CholoJaiRoot!2026}'
-      MYSQL_ROOT_HOST: '%'
       MYSQL_DATABASE: '${MYSQL_DATABASE:-cholo_jai}'
       MYSQL_USER: '${MYSQL_USER:-cholo}'
       MYSQL_PASSWORD: '${MYSQL_PASSWORD:-CholoJaiApp!2026}'
     healthcheck:
       test:
-        - CMD
-        - mysqladmin
-        - ping
-        - '-h'
-        - 127.0.0.1
-        - '-u'
-        - root
-        - '-p${MYSQL_ROOT_PASSWORD}'
+        - CMD-SHELL
+        - 'mysqladmin ping --silent -u root -p"$${MYSQL_ROOT_PASSWORD}"'
       interval: 10s
       timeout: 5s
       retries: 10
@@ -72,8 +65,8 @@ services:
       DB_HOST: 'db'
       DB_PORT: '3306'
       DB_DATABASE: '${MYSQL_DATABASE:-cholo_jai}'
-      DB_USERNAME: 'root'
-      DB_PASSWORD: '${MYSQL_ROOT_PASSWORD:-CholoJaiRoot!2026}'
+      DB_USERNAME: '${MYSQL_USER:-cholo}'
+      DB_PASSWORD: '${MYSQL_PASSWORD:-CholoJaiApp!2026}'
       DB_CHARSET: 'utf8mb4'
       DB_COLLATION: 'utf8mb4_unicode_ci'
 
@@ -111,7 +104,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - 'php -r "try { (new PDO(''mysql:host=db;dbname=$$MYSQL_DATABASE'', ''$$MYSQL_USER'', ''$$MYSQL_PASSWORD'')); exit(0); } catch (Throwable $$e) { exit(1); }"'
+        - 'php artisan migrate:status --no-interaction >/dev/null 2>&1'
       interval: 30s
       timeout: 10s
       retries: 5
