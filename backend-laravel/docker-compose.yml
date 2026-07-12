@@ -26,10 +26,10 @@ services:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql.cnf:/etc/mysql/conf.d/cholo.cnf:ro
     environment:
-      MYSQL_ROOT_PASSWORD: '${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env or Coolify secrets}'
+      MYSQL_ROOT_PASSWORD: '${MYSQL_ROOT_PASSWORD:-}'
       MYSQL_DATABASE: '${MYSQL_DATABASE:-cholo_jai}'
       MYSQL_USER: '${MYSQL_USER:-cholo}'
-      MYSQL_PASSWORD: '${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env or Coolify secrets}'
+      MYSQL_PASSWORD: '${MYSQL_PASSWORD:-}'
     healthcheck:
       test:
         - CMD
@@ -72,7 +72,7 @@ services:
       DB_PORT: '3306'
       DB_DATABASE: '${MYSQL_DATABASE:-cholo_jai}'
       DB_USERNAME: '${MYSQL_USER:-cholo}'
-      DB_PASSWORD: '${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env or Coolify secrets}'
+      DB_PASSWORD: '${MYSQL_PASSWORD:-}'
       DB_CHARSET: 'utf8mb4'
       DB_COLLATION: 'utf8mb4_unicode_ci'
 
@@ -91,7 +91,7 @@ services:
 
       # ── Admin seed (used by AdminUserSeeder on first migrate --seed) ───
       ADMIN_EMAIL: '${ADMIN_EMAIL:-admin@cholojai.bd}'
-      ADMIN_PASSWORD: '${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env or Coolify secrets}'
+      ADMIN_PASSWORD: '${ADMIN_PASSWORD:-}'
 
       # ── Demo data seeder (off in prod by default) ──
       SEED_DEMO_EVENTS: '${SEED_DEMO_EVENTS:-false}'
@@ -151,7 +151,7 @@ services:
     environment:
       PMA_HOST: 'db'
       PMA_PORT: '3306'
-      MYSQL_ROOT_PASSWORD: '${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env or Coolify secrets}'
+      MYSQL_ROOT_PASSWORD: '${MYSQL_ROOT_PASSWORD:-}'
     depends_on:
       db:
         condition: service_healthy

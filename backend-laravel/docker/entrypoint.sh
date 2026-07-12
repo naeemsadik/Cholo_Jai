@@ -25,6 +25,22 @@ case "$SAFE_APP_KEY" in
         ;;
 esac
 
+SAFE_MYSQL_PASSWORD="${MYSQL_PASSWORD:-}"
+case "$SAFE_MYSQL_PASSWORD" in
+    *"in .env or Coolify secrets"*)
+        echo "[entrypoint] MYSQL_PASSWORD contains placeholder text; ignoring invalid value."
+        SAFE_MYSQL_PASSWORD=""
+        ;;
+esac
+
+SAFE_ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
+case "$SAFE_ADMIN_PASSWORD" in
+    *"in .env or Coolify secrets"*)
+        echo "[entrypoint] ADMIN_PASSWORD contains placeholder text; ignoring invalid value."
+        SAFE_ADMIN_PASSWORD=""
+        ;;
+esac
+
 # 1. Bootstrap .env from compose-injected env vars.
 if [ ! -f .env ]; then
     echo "[entrypoint] No .env present — synthesising one from the environment."
@@ -39,13 +55,13 @@ if [ ! -f .env ]; then
         echo "DB_PORT=3306"
         echo "DB_DATABASE=${MYSQL_DATABASE:-cholo_jai}"
         echo "DB_USERNAME=${MYSQL_USER:-cholo}"
-        echo "DB_PASSWORD=${MYSQL_PASSWORD:-}"
+        echo "DB_PASSWORD=${SAFE_MYSQL_PASSWORD}"
         echo "FILESYSTEM_DISK=public"
         echo "CACHE_STORE=file"
         echo "SESSION_DRIVER=file"
         echo "QUEUE_CONNECTION=sync"
         echo "ADMIN_EMAIL=${ADMIN_EMAIL:-admin@cholojai.bd}"
-        echo "ADMIN_PASSWORD=${ADMIN_PASSWORD:-}"
+        echo "ADMIN_PASSWORD=${SAFE_ADMIN_PASSWORD}"
         echo "FRONTEND_ORIGIN=${FRONTEND_ORIGIN:-http://localhost:3000}"
         echo "API_VERSION=${API_VERSION:-0.1.0}"
     } > .env

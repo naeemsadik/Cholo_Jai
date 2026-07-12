@@ -31,10 +31,10 @@ services:
       - mysql_data:/var/lib/mysql
       - ./backend-laravel/docker/mysql.cnf:/etc/mysql/conf.d/cholo.cnf:ro
     environment:
-      MYSQL_ROOT_PASSWORD: '${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env or Coolify secrets}'
-      MYSQL_DATABASE: '${MYSQL_DATABASE:-cholo_jai}'
-      MYSQL_USER: '${MYSQL_USER:-cholo}'
-      MYSQL_PASSWORD: '${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env or Coolify secrets}'
+      MYSQL_ROOT_PASSWORD: 'CholoJaiRoot!2026'
+      MYSQL_DATABASE: 'cholo_jai'
+      MYSQL_USER: 'cholo'
+      MYSQL_PASSWORD: 'CholoJaiApp!2026'
     healthcheck:
       test:
         - CMD
@@ -63,8 +63,8 @@ services:
     environment:
       # ── Laravel core ──
       APP_NAME: 'CholoJai'
-      APP_ENV: '${APP_ENV:-production}'
-      APP_KEY: '${APP_KEY:-}'
+      APP_ENV: 'production'
+      APP_KEY: 'base64:8vTtXj5xwG+z8uGgF2z2m5E0lQk9bM2cW1QnHh3s7xQ='
       APP_DEBUG: '${APP_DEBUG:-false}'
       APP_URL: '${APP_URL:-http://localhost:8000}'
       LOG_CHANNEL: 'stack'
@@ -75,14 +75,14 @@ services:
       DB_CONNECTION: 'mysql'
       DB_HOST: 'db'
       DB_PORT: '3306'
-      DB_DATABASE: '${MYSQL_DATABASE:-cholo_jai}'
-      DB_USERNAME: '${MYSQL_USER:-cholo}'
-      DB_PASSWORD: '${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env or Coolify secrets}'
+      DB_DATABASE: 'cholo_jai'
+      DB_USERNAME: 'cholo'
+      DB_PASSWORD: 'CholoJaiApp!2026'
       DB_CHARSET: 'utf8mb4'
       DB_COLLATION: 'utf8mb4_unicode_ci'
-      MYSQL_DATABASE: '${MYSQL_DATABASE:-cholo_jai}'
-      MYSQL_USER: '${MYSQL_USER:-cholo}'
-      MYSQL_PASSWORD: '${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env or Coolify secrets}'
+      MYSQL_DATABASE: 'cholo_jai'
+      MYSQL_USER: 'cholo'
+      MYSQL_PASSWORD: 'CholoJaiApp!2026'
 
       # ── Cache / sessions / queue (file-backed; no Redis needed) ──
       CACHE_STORE: 'file'
@@ -99,7 +99,7 @@ services:
 
       # ── Admin seed (used by AdminUserSeeder on first migrate --seed) ───
       ADMIN_EMAIL: '${ADMIN_EMAIL:-admin@cholojai.bd}'
-      ADMIN_PASSWORD: '${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env or Coolify secrets}'
+      ADMIN_PASSWORD: '${ADMIN_PASSWORD:-}'
 
       # ── Demo data seeder (off in prod by default) ──
       SEED_DEMO_EVENTS: '${SEED_DEMO_EVENTS:-false}'
@@ -166,7 +166,7 @@ services:
     environment:
       PMA_HOST: 'db'
       PMA_PORT: '3306'
-      MYSQL_ROOT_PASSWORD: '${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env or Coolify secrets}'
+      MYSQL_ROOT_PASSWORD: '${MYSQL_ROOT_PASSWORD:-}'
     depends_on:
       db:
         condition: service_healthy
