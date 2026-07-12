@@ -41,6 +41,13 @@ case "$SAFE_ADMIN_PASSWORD" in
         ;;
 esac
 
+# Normalize DB connection variables used by bootstrap + migrate.
+DB_HOST="${DB_HOST:-db}"
+DB_PORT="${DB_PORT:-3306}"
+DB_DATABASE="${DB_DATABASE:-${MYSQL_DATABASE:-cholo_jai}}"
+DB_USERNAME="${DB_USERNAME:-${MYSQL_USER:-cholo}}"
+DB_PASSWORD="${DB_PASSWORD:-$SAFE_MYSQL_PASSWORD}"
+
 # 1. Bootstrap .env from compose-injected env vars.
 if [ ! -f .env ]; then
     echo "[entrypoint] No .env present — synthesising one from the environment."
@@ -84,33 +91,29 @@ if ! grep -q '^APP_KEY=base64' .env 2>/dev/null; then
     fi
 fi
 
-# 3. Wait for MySQL.
+# 3. Wait for MySQL (root ping is most reliable during bootstrap).
 echo "[entrypoint] Waiting for MySQL at ${DB_HOST}:${DB_PORT}…"
 ATTEMPTS=0
 MAX_ATTEMPTS=30
-DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" DB_DATABASE="$DB_DATABASE" DB_USERNAME="$DB_USERNAME" DB_PASSWORD="$DB_PASSWORD" \
-php -r '
-    $h = getenv("DB_HOST"); $P = getenv("DB_PORT");
-    $n = getenv("DB_DATABASE"); $u = getenv("DB_USERNAME"); $w = getenv("DB_PASSWORD");
-    try { new PDO("mysql:host=$h;port=$P;dbname=$n", $u, $w); exit(0); }
-    catch (Throwable $e) { exit(1); }
-' && break_on_ok=1
-until [ "${break_on_ok:-0}" = "1" ]; do
+until mysqladmin ping --protocol=TCP -h "$DB_HOST" -P "$DB_PORT" -u root "-p${MYSQL_ROOT_PASSWORD}" --silent >/dev/null 2>&1; do
     ATTEMPTS=$((ATTEMPTS + 1))
     if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
         echo "[entrypoint] MySQL never came up — exiting."
         exit 1
     fi
     sleep 2
-    DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" DB_DATABASE="$DB_DATABASE" DB_USERNAME="$DB_USERNAME" DB_PASSWORD="$DB_PASSWORD" \
-    php -r '
-        $h = getenv("DB_HOST"); $P = getenv("DB_PORT");
-        $n = getenv("DB_DATABASE"); $u = getenv("DB_USERNAME"); $w = getenv("DB_PASSWORD");
-        try { new PDO("mysql:host=$h;port=$P;dbname=$n", $u, $w); exit(0); }
-        catch (Throwable $e) { exit(1); }
-    ' && break_on_ok=1 || break_on_ok=0
 done
 echo "[entrypoint] MySQL is up."
+
+# 3.5 Ensure application DB + user exist on first boot (idempotent).
+echo "[entrypoint] Ensuring database/user grants…"
+mysql --protocol=TCP -h "$DB_HOST" -P "$DB_PORT" -u root "-p${MYSQL_ROOT_PASSWORD}" <<SQL
+CREATE DATABASE IF NOT EXISTS \`$DB_DATABASE\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '$DB_USERNAME'@'%' IDENTIFIED BY '$DB_PASSWORD';
+ALTER USER '$DB_USERNAME'@'%' IDENTIFIED BY '$DB_PASSWORD';
+GRANT ALL PRIVILEGES ON \`$DB_DATABASE\`.* TO '$DB_USERNAME'@'%';
+FLUSH PRIVILEGES;
+SQL
 
 # 4. Migrate.
 echo "[entrypoint] Running migrations…"

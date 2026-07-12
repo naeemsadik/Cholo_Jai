@@ -83,6 +83,7 @@ services:
       MYSQL_DATABASE: 'cholo_jai'
       MYSQL_USER: 'cholo'
       MYSQL_PASSWORD: 'CholoJaiApp!2026'
+      MYSQL_ROOT_PASSWORD: 'CholoJaiRoot!2026'
 
       # ── Cache / sessions / queue (file-backed; no Redis needed) ──
       CACHE_STORE: 'file'
@@ -98,8 +99,8 @@ services:
       SESSION_DOMAIN: '${SESSION_DOMAIN:-}'
 
       # ── Admin seed (used by AdminUserSeeder on first migrate --seed) ───
-      ADMIN_EMAIL: '${ADMIN_EMAIL:-admin@cholojai.bd}'
-      ADMIN_PASSWORD: '${ADMIN_PASSWORD:-}'
+      ADMIN_EMAIL: 'naeemabdullahsadik@gmail.com'
+      ADMIN_PASSWORD: 'Admin@NaeemSadik2001'
 
       # ── Demo data seeder (off in prod by default) ──
       SEED_DEMO_EVENTS: '${SEED_DEMO_EVENTS:-false}'
@@ -173,7 +174,7 @@ services:
 
 volumes:
   mysql_data:
-    name: cholo-jai-mysql
+    name: cholo-jai-mysql-v2
   uploads_data:
     name: cholo-jai-uploads
   laravel_logs:
