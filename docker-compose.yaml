@@ -118,11 +118,11 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - 'php -r "try { (new PDO(''mysql:host=db;dbname=$$MYSQL_DATABASE'', ''$$MYSQL_USER'', ''$$MYSQL_PASSWORD'')); exit(0); } catch (Throwable $$e) { exit(1); }"'
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
+        - 'php -v >/dev/null 2>&1 && test -f /var/www/html/public/index.php'
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
 
   web:
     build:
@@ -139,7 +139,7 @@ services:
       - uploads_data:/var/www/html/storage/app/public:ro
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
       db:
         condition: service_healthy
     healthcheck:
