@@ -61,7 +61,7 @@ services:
       APP_KEY: 'base64:8vTtXj5xwG+z8uGgF2z2m5E0lQk9bM2cW1QnHh3s7xQ='
       APP_DEBUG: '${APP_DEBUG:-false}'
       APP_URL: '${APP_URL:-http://localhost:8000}'
-      LOG_CHANNEL: 'stack'
+      LOG_CHANNEL: 'stderr'
       LOG_LEVEL: '${LOG_LEVEL:-info}'
       API_VERSION: '${API_VERSION:-0.1.0}'
 
@@ -102,8 +102,6 @@ services:
       RUN_SEED: '${RUN_SEED:-false}'
     volumes:
       - uploads_data:/var/www/html/storage/app/public
-      - laravel_logs:/var/www/html/storage/logs
-      - laravel_cache:/var/www/html/bootstrap/cache
     healthcheck:
       test:
         - CMD-SHELL
@@ -169,7 +167,3 @@ volumes:
     name: cholo-jai-mysql-v5
   uploads_data:
     name: cholo-jai-uploads
-  laravel_logs:
-    name: cholo-jai-laravel-logs
-  laravel_cache:
-    name: cholo-jai-laravel-cache
