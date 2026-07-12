@@ -7,8 +7,8 @@
 #
 # Services:
 #   - db          MySQL 8.0 with utf8mb4 + Asia/Dhaka timezone
-#   - backend     Laravel 11 php-fpm app (built from backend-laravel/)
-#   - web         nginx (custom image) serving PHP-FPM (Coolify proxy)
+#   - php         Laravel 11 php-fpm app (internal)
+#   - backend     nginx serving PHP-FPM (Coolify proxy)
 #   - phpmyadmin  DB admin UI on 127.0.0.1:8080 (tunnel in via SSH)
 #
 # Fill in the secrets in `.env` next to this file (copy from
@@ -44,12 +44,12 @@ services:
       retries: 10
       start_period: 30s
 
-  backend:
+  php:
     build:
       context: ./backend-laravel
       dockerfile: docker/Dockerfile
-    image: cholo-jai-backend:latest
-    container_name: cholo-jai-backend
+    image: cholo-jai-php:latest
+    container_name: cholo-jai-php
     restart: unless-stopped
     depends_on:
       db:
@@ -60,7 +60,7 @@ services:
       APP_ENV: 'production'
       APP_KEY: 'base64:8vTtXj5xwG+z8uGgF2z2m5E0lQk9bM2cW1QnHh3s7xQ='
       APP_DEBUG: '${APP_DEBUG:-false}'
-      APP_URL: '${SERVICE_URL_WEB:-http://localhost:8000}'
+      APP_URL: '${SERVICE_URL_BACKEND:-http://localhost:8000}'
       LOG_CHANNEL: 'stderr'
       LOG_LEVEL: '${LOG_LEVEL:-info}'
       API_VERSION: '${API_VERSION:-0.1.0}'
@@ -96,7 +96,7 @@ services:
       SEED_DEMO_EVENTS: '${SEED_DEMO_EVENTS:-false}'
 
       # ── Public URLs Coolify will route to us ──
-      PUBLIC_API_URL: '${SERVICE_URL_WEB:-http://localhost:8000}'
+      PUBLIC_API_URL: '${SERVICE_URL_BACKEND:-http://localhost:8000}'
 
       # ── First-boot flag — set true ONCE to seed demo data, then false ──
       RUN_SEED: '${RUN_SEED:-false}'
@@ -111,12 +111,12 @@ services:
       retries: 8
       start_period: 20s
 
-  web:
+  backend:
     build:
       context: ./backend-laravel
       dockerfile: docker/nginx.Dockerfile
-    image: cholo-jai-web:latest
-    container_name: cholo-jai-web
+    image: cholo-jai-backend:latest
+    container_name: cholo-jai-backend
     restart: unless-stopped
     # No host port bind: Coolify/Traefik should route to this service
     # internally. This avoids host-port collisions on shared VPS hosts.
@@ -124,11 +124,11 @@ services:
       - '80'
     environment:
       # Coolify must route HTTP traffic to nginx, not PHP-FPM.
-      SERVICE_URL_WEB: '${SERVICE_URL_WEB:-http://localhost:8000}'
+      SERVICE_URL_BACKEND: '${SERVICE_URL_BACKEND:-http://localhost:8000}'
     volumes:
       - uploads_data:/var/www/html/storage/app/public:ro
     depends_on:
-      backend:
+      php:
         condition: service_started
       db:
         condition: service_healthy
