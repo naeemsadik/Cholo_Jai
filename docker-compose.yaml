@@ -97,8 +97,6 @@ services:
 
       # ── Public URLs Coolify will route to us ──
       PUBLIC_API_URL: '${PUBLIC_API_URL:-http://localhost:8000}'
-      SERVICE_FQDN_BACKEND: '${SERVICE_FQDN_BACKEND:-localhost}'
-      SERVICE_URL_BACKEND: '${SERVICE_URL_BACKEND:-http://localhost:8000}'
 
       # ── First-boot flag — set true ONCE to seed demo data, then false ──
       RUN_SEED: '${RUN_SEED:-false}'
@@ -126,6 +124,10 @@ services:
     # internally. This avoids host-port collisions on shared VPS hosts.
     expose:
       - '80'
+    environment:
+      # Coolify must route HTTP traffic to nginx, not PHP-FPM.
+      SERVICE_FQDN_WEB: '${SERVICE_FQDN_WEB:-localhost}'
+      SERVICE_URL_WEB: '${SERVICE_URL_WEB:-http://localhost:8000}'
     volumes:
       - uploads_data:/var/www/html/storage/app/public:ro
     depends_on:
