@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { SectionMobileSheet } from "@/components/mobile/section-sheet";
 import { cn, formatPrice, formatTime } from "@/lib/utils";
+import { useLocale } from "@/lib/i18n/client";
+import { localizeEvent } from "@/lib/i18n/event";
 import type { Event } from "@/lib/types";
 
 interface CalendarViewProps {
@@ -29,9 +31,7 @@ export function CalendarView({ events }: CalendarViewProps) {
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
 
   const today = React.useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
+    return parseIsoDate(dhakaTodayIso());
   }, []);
 
   const viewMonth = React.useMemo(() => {
@@ -49,8 +49,8 @@ export function CalendarView({ events }: CalendarViewProps) {
       // Multi-day events span across days
       const start = e.start_date;
       const end = e.end_date ?? e.start_date;
-      let cursor = new Date(start + "T00:00:00");
-      const last = new Date(end + "T00:00:00");
+      let cursor = parseIsoDate(start);
+      const last = parseIsoDate(end);
       let guard = 0;
       while (cursor <= last && guard++ < 60) {
         const key = cursor.toISOString().slice(0, 10);
@@ -185,9 +185,9 @@ export function CalendarView({ events }: CalendarViewProps) {
                   const isToday = c.iso === todayIso;
                   const isPast = c.iso < todayIso;
                   return (
-                    <DayCell
-                      key={c.iso}
-                      iso={c.iso}
+                  <DayCell
+                    key={c.iso}
+                    iso={c.iso}
                       day={c.date.getDate()}
                       count={eventsToday.length}
                       isToday={isToday}
@@ -214,7 +214,7 @@ export function CalendarView({ events }: CalendarViewProps) {
           <DialogHeader>
             <DialogTitle>
               {selectedDate &&
-                new Date(selectedDate + "T00:00:00").toLocaleDateString("en-GB", {
+                parseIsoDate(selectedDate).toLocaleDateString("en-GB", {
                   weekday: "long",
                   day: "2-digit",
                   month: "long",
@@ -274,7 +274,7 @@ function DayCell({
       type="button"
       role="gridcell"
       aria-label={
-        new Date(iso + "T00:00:00").toLocaleDateString("en-GB", {
+        parseIsoDate(iso).toLocaleDateString("en-GB", {
           weekday: "long",
           day: "numeric",
           month: "long",
@@ -328,7 +328,26 @@ function DayCell({
   );
 }
 
+function dhakaTodayIso(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dhaka",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((p) => p.type === "year")?.value ?? "1970";
+  const month = parts.find((p) => p.type === "month")?.value ?? "01";
+  const day = parts.find((p) => p.type === "day")?.value ?? "01";
+  return `${year}-${month}-${day}`;
+}
+
+function parseIsoDate(iso: string): Date {
+  return new Date(`${iso}T00:00:00`);
+}
+
 function DayEventRow({ event }: { event: Event }) {
+  const locale = useLocale();
+  const l = localizeEvent(event, locale);
   const isFree = event.price_type === "free";
   return (
     <Link
@@ -346,7 +365,7 @@ function DayEventRow({ event }: { event: Event }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2 text-[0.65rem] font-mono uppercase tracking-[0.15em] text-ink-500">
-          <span>{formatTime(event.start_time)}</span>
+          <span>{formatTime(event.start_time, locale)}</span>
           <span aria-hidden>·</span>
           <span>{event.sub_area}</span>
           {isFree && (
@@ -357,16 +376,16 @@ function DayEventRow({ event }: { event: Event }) {
           )}
         </div>
         <h4 className="mt-1 font-display text-base leading-snug text-ink group-hover:text-accent-700 transition-colors line-clamp-2">
-          {event.title}
+          {l.title}
         </h4>
         <div className="mt-1 flex items-center gap-1.5 text-xs text-ink-500">
           <MapPin className="h-3 w-3" aria-hidden />
-          <span className="line-clamp-1">{event.venue_name}</span>
+          <span className="line-clamp-1">{l.venue_name}</span>
         </div>
       </div>
       <div className="self-center">
         <Badge variant="outline" className="font-mono">
-          {formatPrice(event.price_type, event.price_note)}
+          {formatPrice(event.price_type, event.price_note, locale)}
         </Badge>
       </div>
     </Link>

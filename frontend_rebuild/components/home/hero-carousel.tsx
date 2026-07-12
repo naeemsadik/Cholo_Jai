@@ -7,6 +7,8 @@ import { ChevronLeft, ChevronRight, MapPin, Calendar, ArrowUpRight } from "lucid
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn, formatEventDate, formatPrice } from "@/lib/utils";
+import { useLocale } from "@/lib/i18n/client";
+import { localizeEvent } from "@/lib/i18n/event";
 import type { Event } from "@/lib/types";
 
 interface HeroCarouselProps {
@@ -198,6 +200,8 @@ function Slide({
   total: number;
   ariaHidden: boolean;
 }) {
+  const locale = useLocale();
+  const l = localizeEvent(event, locale);
   const isFree = event.price_type === "free";
   return (
     <div
@@ -262,13 +266,13 @@ function Slide({
                 </div>
 
                 <h2 className="mt-3 font-display text-[1.6rem] leading-[1.05] tracking-tight text-balance sm:mt-0 sm:text-4xl md:mt-5 md:text-5xl lg:text-6xl">
-                  {event.title}
+                  {l.title}
                 </h2>
 
                 {/* Description — mobile clamps to 2 lines to preserve aspect budget;
                     desktop expands to 3 lines. */}
                 <p className="mt-3 hidden max-w-xl font-display text-base leading-relaxed text-paper/85 sm:block sm:text-lg sm:line-clamp-3">
-                  {event.description}
+                  {l.description}
                 </p>
 
                 {/* Meta — always stacked cleanly. 3 rows on mobile (full labels),
@@ -277,20 +281,20 @@ function Slide({
                   <div className="flex items-center gap-2 text-paper/85">
                     <Calendar className="h-4 w-4 shrink-0 text-paper/60" aria-hidden />
                     <dt className="sr-only sm:not-sr-only sm:text-paper/60 sm:text-[0.7rem] sm:font-mono sm:uppercase sm:tracking-wider sm:mr-1">When</dt>
-                    <dd className="line-clamp-1">{formatEventDate(event.start_date, event.start_time)}</dd>
+                    <dd className="line-clamp-1">{formatEventDate(event.start_date, event.start_time, locale)}</dd>
                   </div>
                   <div className="flex items-center gap-2 text-paper/85">
                     <MapPin className="h-4 w-4 shrink-0 text-paper/60" aria-hidden />
                     <dt className="sr-only sm:not-sr-only sm:text-paper/60 sm:text-[0.7rem] sm:font-mono sm:uppercase sm:tracking-wider sm:mr-1">Where</dt>
                     <dd className="line-clamp-1">
                       <span className="sm:hidden">{event.sub_area}</span>
-                      <span className="hidden sm:inline">{event.venue_name}, {event.sub_area}</span>
+                      <span className="hidden sm:inline">{l.venue_name}, {event.sub_area}</span>
                     </dd>
                   </div>
                   <div className="flex items-center gap-2 text-paper/85">
                     <dt className="sr-only sm:not-sr-only sm:text-paper/60 sm:text-[0.7rem] sm:font-mono sm:uppercase sm:tracking-wider sm:mr-1">Cost</dt>
                     <dd className="font-mono uppercase tracking-wider">
-                      {formatPrice(event.price_type, event.price_note)}
+                      {formatPrice(event.price_type, event.price_note, locale)}
                     </dd>
                   </div>
                 </dl>
@@ -325,15 +329,15 @@ function Slide({
                     This week&rsquo;s pick
                   </p>
                   <p className="font-display text-xl leading-snug text-paper text-balance">
-                    {event.title}
+                    {l.title}
                   </p>
                   <div className="flex items-center gap-2 text-xs text-paper/80">
                     <Calendar className="h-3.5 w-3.5 text-paper/60" />
-                    <time dateTime={event.start_date}>{formatEventDate(event.start_date, event.start_time)}</time>
+                    <time dateTime={event.start_date}>{formatEventDate(event.start_date, event.start_time, locale)}</time>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-paper/80">
                     <MapPin className="h-3.5 w-3.5 text-paper/60" />
-                    <span className="line-clamp-1">{event.venue_name}</span>
+                    <span className="line-clamp-1">{l.venue_name}</span>
                   </div>
                   <div className="pt-2 mt-2 border-t border-paper/15">
                     <p className="text-xs text-paper/70">

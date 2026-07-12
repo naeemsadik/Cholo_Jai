@@ -14,6 +14,8 @@ import { toast } from "@/components/ui/toaster";
 import { MobileStickyBar } from "@/components/mobile/sticky-bar";
 import { trackOutboundClick } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
+import { useLocale } from "@/lib/i18n/client";
+import { localizeEvent } from "@/lib/i18n/event";
 import type { Event } from "@/lib/types";
 
 interface EventMobileActionsProps {
@@ -23,7 +25,9 @@ interface EventMobileActionsProps {
 // Mobile-only sticky action bar + secondary actions sheet for event detail.
 // Always visible <lg; the outbound CTA is the primary action.
 export function EventMobileActions({ event }: EventMobileActionsProps) {
-  const priceLabel = formatPrice(event.price_type, event.price_note);
+  const locale = useLocale();
+  const l = localizeEvent(event, locale);
+  const priceLabel = formatPrice(event.price_type, event.price_note, locale);
   const eventPath = React.useMemo(() => `/events/${event.slug}`, [event.slug]);
   const [eventUrl, setEventUrl] = React.useState(eventPath);
 
@@ -50,7 +54,7 @@ export function EventMobileActions({ event }: EventMobileActionsProps) {
       meta={
         <span className="block leading-tight">
           <span className="block font-display text-sm font-semibold text-ink">{priceLabel}</span>
-          <span className="block text-[0.6rem] text-ink-500">{event.venue_name}</span>
+          <span className="block text-[0.6rem] text-ink-500">{l.venue_name}</span>
         </span>
       }
       primary={{
@@ -81,7 +85,7 @@ export function EventMobileActions({ event }: EventMobileActionsProps) {
             </SheetHeader>
             <div className="mt-4 space-y-2 px-4 pb-6">
               <a
-                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`${event.title} — ${eventUrl}`)}`}
+                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`${l.title} — ${eventUrl}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex w-full items-center gap-3 rounded-lg border border-rule bg-paper px-4 py-3 text-sm font-medium hover:bg-cream-50"

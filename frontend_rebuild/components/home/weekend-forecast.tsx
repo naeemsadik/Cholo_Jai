@@ -3,11 +3,13 @@ import { ChevronRight, MapPin, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { HorizontalSnap } from "@/components/mobile/horizontal-snap";
 import { cn, formatEventDate, isWeekendDate } from "@/lib/utils";
+import { useLocale } from "@/lib/i18n/client";
+import { localizeEvent } from "@/lib/i18n/event";
 import type { Event } from "@/lib/types";
 
 // "Weekend forecast" — the editorial pick for what's happening Fri–Sun
 export function WeekendForecast({ events }: { events: Event[] }) {
-  const today = new Date();
+  const today = parseIsoDate(dhakaTodayIso());
   const next = new Date(today);
   next.setDate(today.getDate() + ((5 - today.getDay() + 7) % 7 || 7));
   const weekendEnd = new Date(next);
@@ -16,7 +18,7 @@ export function WeekendForecast({ events }: { events: Event[] }) {
   const upcoming = events
     .filter((e) => isWeekendDate(e.start_date))
     .filter((e) => {
-      const d = new Date(e.start_date);
+      const d = parseIsoDate(e.start_date);
       return d >= today && d <= weekendEnd;
     })
     .slice(0, 3);
@@ -65,8 +67,10 @@ export function WeekendForecast({ events }: { events: Event[] }) {
 }
 
 function WeekendCell({ event }: { event: Event }) {
-  const day = new Date(event.start_date);
-  const dayLabel = day.toLocaleDateString("en-GB", { weekday: "long" });
+  const locale = useLocale();
+  const l = localizeEvent(event, locale);
+  const day = parseIsoDate(event.start_date);
+  const dayLabel = day.toLocaleDateString(locale === "bn" ? "bn-BD" : "en-GB", { weekday: "long" });
   return (
     <Link
       href={`/events/${event.slug}`}
@@ -77,18 +81,18 @@ function WeekendCell({ event }: { event: Event }) {
           {dayLabel.toUpperCase()}
         </Badge>
         <span className="truncate text-right font-mono text-[0.6rem] uppercase tracking-wider text-ink-500 md:text-[0.65rem]">
-          {formatEventDate(event.start_date, event.start_time)}
+          {formatEventDate(event.start_date, event.start_time, locale)}
         </span>
       </div>
       <h3 className="mt-6 break-words font-display text-xl leading-tight tracking-tight text-ink group-hover:text-accent-700 transition-colors text-balance md:mt-8 md:text-2xl">
-        {event.title}
+        {l.title}
       </h3>
       <p className="mt-3 line-clamp-3 break-words text-sm text-ink-500">
-        {event.description}
+        {l.description}
       </p>
       <div className="mt-auto flex items-center gap-1.5 pt-6 text-xs text-ink-700">
         <MapPin className="h-3 w-3 shrink-0" />
-        <span className="truncate">{event.venue_name}, {event.sub_area}</span>
+        <span className="truncate">{l.venue_name}, {event.sub_area}</span>
       </div>
       <div
         className={cn(
@@ -102,4 +106,21 @@ function WeekendCell({ event }: { event: Event }) {
       </div>
     </Link>
   );
+}
+
+function dhakaTodayIso(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dhaka",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((p) => p.type === "year")?.value ?? "1970";
+  const month = parts.find((p) => p.type === "month")?.value ?? "01";
+  const day = parts.find((p) => p.type === "day")?.value ?? "01";
+  return `${year}-${month}-${day}`;
+}
+
+function parseIsoDate(iso: string): Date {
+  return new Date(`${iso}T00:00:00`);
 }

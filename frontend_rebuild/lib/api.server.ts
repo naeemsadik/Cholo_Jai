@@ -192,7 +192,7 @@ export const serverGetSubmissions = unstable_cache(
 // Next.js local cms-store if the backend shape doesn't match.
 export interface BackendHomeResponse {
   order: string[];
-  sections: Record<string, { type?: string; title?: string; config?: Record<string, unknown> }>;
+  sections: Record<string, unknown>;
   updated_at?: string;
 }
 

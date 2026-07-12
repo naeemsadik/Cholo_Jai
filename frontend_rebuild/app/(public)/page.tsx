@@ -19,7 +19,7 @@ import { DataSourceProvider } from "@/components/site/data-source-context";
 import { HorizontalSnap } from "@/components/mobile/horizontal-snap";
 import { NavFab } from "@/components/mobile/nav-fab";
 import { EventCard } from "@/components/events/event-card";
-import { formatEventDate, formatPrice } from "@/lib/utils";
+import { formatEventDateWithLocale, formatPriceWithLocale } from "@/lib/utils.server";
 import {
   DEFAULT_HOME_CONFIG,
   readHomeConfig as readLocalHomeConfig,
@@ -28,8 +28,11 @@ import {
   serverGetEvents,
   serverGetFeaturedEvents,
   serverGetHeroEvents,
+  serverGetHomeConfig,
 } from "@/lib/api.server";
 import { getLocaleFromHeaders } from "@/lib/i18n/server";
+import { localizeEvent } from "@/lib/i18n/event";
+import type { Locale } from "@/lib/i18n/types";
 import type { Event } from "@/lib/types";
 import type {
   HomePageConfig,
@@ -79,14 +82,26 @@ function getMarqueeItems(
 }
 
 export default async function HomePage() {
-  const [locale, localHome, upcoming, featured, heroEvents] = await Promise.all([
+  const [locale, backendHome, localHome, upcoming, featured, heroEvents] = await Promise.all([
     getLocaleFromHeaders(),
+    serverGetHomeConfig(),
     readLocalHomeConfig(),
     serverGetEvents(),
     serverGetFeaturedEvents(),
     serverGetHeroEvents(),
   ]);
-  const home: HomePageConfig = localHome ?? DEFAULT_HOME_CONFIG;
+  const home: HomePageConfig =
+    backendHome && Array.isArray(backendHome.order) && backendHome.sections
+      ? {
+          ...DEFAULT_HOME_CONFIG,
+          order: backendHome.order as HomeSectionId[],
+          sections: {
+            ...DEFAULT_HOME_CONFIG.sections,
+            ...(backendHome.sections as Record<HomeSectionId, HomeSectionConfig>),
+          },
+          updated_at: backendHome.updated_at ?? DEFAULT_HOME_CONFIG.updated_at,
+        }
+      : localHome ?? DEFAULT_HOME_CONFIG;
 
   const today = new Date().toISOString().slice(0, 10);
   const filteredFeatured = featured.filter((e) => e.start_date >= today);
@@ -148,11 +163,11 @@ export default async function HomePage() {
                   </h2>
                 </div>
               </div>
-              <FeaturedLead event={lead} />
+              <FeaturedLead event={lead} locale={locale} />
               {secondaryFeatured.length > 0 && (
                 <div className="mt-12 hidden grid-cols-1 gap-6 sm:mt-12 sm:grid sm:grid-cols-2 lg:grid lg:grid-cols-3">
                   {secondaryFeatured.slice(0, 3).map((e) => (
-                    <SmallFeaturedCard key={e.id} event={e} />
+                    <SmallFeaturedCard key={e.id} event={e} locale={locale} />
                   ))}
                 </div>
               )}
@@ -164,7 +179,7 @@ export default async function HomePage() {
                     showProgress
                   >
                     {secondaryFeatured.slice(0, 6).map((e) => (
-                      <SmallFeaturedCard key={e.id} event={e} />
+                      <SmallFeaturedCard key={e.id} event={e} locale={locale} />
                     ))}
                   </HorizontalSnap>
                 </div>
@@ -204,16 +219,17 @@ export default async function HomePage() {
 }
 
 // Featured lead card — large editorial block (desktop)
-function FeaturedLead({ event }: { event: Event }) {
+function FeaturedLead({ event, locale }: { event: Event; locale: Locale }) {
+  const l = localizeEvent(event, locale);
   return (
     <article className="group relative grid min-w-0 grid-cols-1 overflow-hidden border border-rule bg-paper transition-all hover:border-ink-300 hover:shadow-paper-lg md:grid-cols-12">
-      <Link href={`/events/${event.slug}`} className="absolute inset-0 z-10" aria-label={event.title}>
-        <span className="sr-only">{event.title}</span>
+      <Link href={`/events/${event.slug}`} className="absolute inset-0 z-10" aria-label={l.title}>
+        <span className="sr-only">{l.title}</span>
       </Link>
       <div className="relative aspect-[16/10] overflow-hidden bg-cream-200 md:col-span-7 md:aspect-auto md:h-full">
         <Image
           src={event.poster_url}
-          alt={event.title}
+          alt={l.poster_alt}
           fill
           sizes="(min-width: 768px) 60vw, 100vw"
           className="object-cover transition-transform duration-700 group-hover:scale-[1.02]"
@@ -230,19 +246,19 @@ function FeaturedLead({ event }: { event: Event }) {
         <div className="min-w-0">
           <div className="eyebrow">{event.categories[0] ? event.categories[0].replace(/-/g, " ") : "Featured"}</div>
           <h3 className="mt-4 break-words font-display text-2xl leading-[1.1] tracking-tight text-balance text-ink md:text-4xl">
-            {event.title}
+            {l.title}
           </h3>
-          <p className="mt-4 line-clamp-4 break-words text-sm text-ink-700 md:text-base leading-relaxed">{event.description}</p>
+          <p className="mt-4 line-clamp-4 break-words text-sm text-ink-700 md:text-base leading-relaxed">{l.description}</p>
         </div>
         <div className="mt-8">
           <div className="hairline mb-4" />
           <dl className="grid grid-cols-[5rem_1fr] items-baseline gap-x-4 gap-y-3 text-xs">
             <dt className="eyebrow">When</dt>
-            <dd className="min-w-0 break-words text-ink">{formatEventDate(event.start_date, event.start_time)}</dd>
+            <dd className="min-w-0 break-words text-ink">{formatEventDateWithLocale(event.start_date, event.start_time, locale)}</dd>
             <dt className="eyebrow">Where</dt>
-            <dd className="min-w-0 break-words text-ink">{event.venue_name}, {event.sub_area}</dd>
+            <dd className="min-w-0 break-words text-ink">{l.venue_name}, {event.sub_area}</dd>
             <dt className="eyebrow">Cost</dt>
-            <dd className="break-words font-mono uppercase tracking-wider text-ink">{formatPrice(event.price_type, event.price_note)}</dd>
+            <dd className="break-words font-mono uppercase tracking-wider text-ink">{formatPriceWithLocale(event.price_type, event.price_note, locale)}</dd>
           </dl>
           <div className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-ember">
             Read the full listing
@@ -254,16 +270,17 @@ function FeaturedLead({ event }: { event: Event }) {
   );
 }
 
-function SmallFeaturedCard({ event }: { event: Event }) {
+function SmallFeaturedCard({ event, locale }: { event: Event; locale: Locale }) {
+  const l = localizeEvent(event, locale);
   return (
     <article className="group relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-lg border border-rule bg-paper transition-all hover:border-ink-300 hover:-translate-y-0.5 hover:shadow-paper-lg">
-      <Link href={`/events/${event.slug}`} className="absolute inset-0 z-10" aria-label={event.title}>
-        <span className="sr-only">{event.title}</span>
+      <Link href={`/events/${event.slug}`} className="absolute inset-0 z-10" aria-label={l.title}>
+        <span className="sr-only">{l.title}</span>
       </Link>
       <div className="relative aspect-[16/10] overflow-hidden bg-cream-200">
         <Image
           src={event.poster_url}
-          alt={event.title}
+          alt={l.poster_alt}
           fill
           sizes="(min-width: 1024px) 33vw, 50vw"
           className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
@@ -272,12 +289,12 @@ function SmallFeaturedCard({ event }: { event: Event }) {
       <div className="flex min-w-0 flex-1 flex-col p-5">
         <div className="flex min-w-0 items-center gap-2 text-[0.6875rem] uppercase tracking-[0.15em] text-ink-500">
           <Calendar className="h-3 w-3 shrink-0" />
-          <time dateTime={event.start_date} className="truncate">{formatEventDate(event.start_date, event.start_time)}</time>
+          <time dateTime={event.start_date} className="truncate">{formatEventDateWithLocale(event.start_date, event.start_time, locale)}</time>
         </div>
-        <h3 className="mt-3 break-words font-display text-lg leading-snug text-ink line-clamp-2 sm:text-xl">{event.title}</h3>
+        <h3 className="mt-3 break-words font-display text-lg leading-snug text-ink line-clamp-2 sm:text-xl">{l.title}</h3>
         <div className="mt-auto flex items-center gap-1.5 pt-4 text-xs text-ink-700">
           <MapPin className="h-3 w-3 shrink-0 text-ink-500" />
-          <span className="truncate">{event.sub_area}</span>
+          <span className="truncate">{l.venue_name}</span>
         </div>
       </div>
     </article>

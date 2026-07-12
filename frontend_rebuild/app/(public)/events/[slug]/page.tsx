@@ -23,17 +23,21 @@ import { StatusPill } from "@/components/admin/status-pill";
 import { HorizontalSnap } from "@/components/mobile/horizontal-snap";
 import { EventMobileActions } from "@/components/mobile/event-mobile-actions";
 import { EventSchema, BreadcrumbSchema } from "@/components/seo/structured-data";
-import { getRelatedEvents, getEvents } from "@/lib/api";
 import { serverGetEventBySlug, serverGetEvents } from "@/lib/api.server";
-import { formatEventDate, formatPrice, formatTime } from "@/lib/utils";
+import {
+  formatEventDateWithLocale,
+  formatPriceWithLocale,
+  formatTimeWithLocale,
+} from "@/lib/utils.server";
 import { CATEGORIES, AUDIENCE_TAGS } from "@/lib/categories";
+import { localizeEvent } from "@/lib/i18n/event";
+import { getLocaleFromHeaders } from "@/lib/i18n/server";
 
 export const dynamic = "force-dynamic";
 
-// Pre-generate static paths for fallback events at build time
 export async function generateStaticParams() {
   const live = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (live) return []; // rely on dynamic rendering
+  if (live) return [];
   const events = await serverGetEvents({});
   return events.slice(0, 12).map((e) => ({ slug: e.slug }));
 }
@@ -44,30 +48,37 @@ interface PageProps {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const e = await serverGetEventBySlug(params.slug);
+  const [locale, e] = await Promise.all([
+    getLocaleFromHeaders(),
+    serverGetEventBySlug(params.slug),
+  ]);
+
   if (!e) {
     return {
       title: "Event not found",
       description: "This event is no longer available.",
     };
   }
-  const price = formatPrice(e.price_type, e.price_note);
-  const when = formatEventDate(e.start_date, e.start_time);
-  const description = `${when} · ${e.venue_name}, ${e.sub_area} · ${price}. ${e.description.slice(0, 140)}…`;
+
+  const l = localizeEvent(e, locale);
+  const price = formatPriceWithLocale(e.price_type, e.price_note, locale);
+  const when = formatEventDateWithLocale(e.start_date, e.start_time, locale);
+  const description = `${when} · ${l.venue_name}, ${e.sub_area} · ${price}. ${l.description.slice(0, 140)}…`;
+
   return {
-    title: e.title,
+    title: l.title,
     description,
     alternates: { canonical: `/events/${e.slug}` },
     openGraph: {
       type: "article",
       url: `/events/${e.slug}`,
-      title: e.title,
-      description: e.description.slice(0, 200),
-      images: [{ url: e.poster_url, width: 1200, height: 630, alt: e.title }],
+      title: l.title,
+      description: l.description.slice(0, 200),
+      images: [{ url: e.poster_url, width: 1200, height: 630, alt: l.poster_alt }],
     },
     twitter: {
       card: "summary_large_image",
-      title: e.title,
+      title: l.title,
       description,
       images: [e.poster_url],
     },
@@ -75,11 +86,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function EventDetailPage({ params, searchParams }: PageProps) {
+  const locale = await getLocaleFromHeaders();
   const event = await serverGetEventBySlug(params.slug);
   if (!event) notFound();
+
+  const l = localizeEvent(event, locale);
   const isFallback = !process.env.NEXT_PUBLIC_API_BASE_URL;
-  // Admin-only preview indicator (no auth on MVP).
-  // Admin surfaces internal status by appending `?preview=admin`.
   const showAdminStatus = searchParams.preview === "admin";
 
   const allEvents = await serverGetEvents({});
@@ -96,8 +108,14 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
     <DataSourceProvider source={isFallback ? "fallback" : "live"}>
       <PageViewTracker eventId={event.id} />
 
-      {/* Schema.org Event + BreadcrumbList for SEO + GEO citation. */}
-      <EventSchema event={event} />
+      <EventSchema
+        event={{
+          ...event,
+          title: l.title,
+          description: l.description,
+          venue_name: l.venue_name,
+        }}
+      />
       <BreadcrumbSchema
         items={[
           { name: "Home", url: "/" },
@@ -105,12 +123,11 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
           ...(event.categories[0]
             ? [{ name: catName(event.categories[0]), url: `/events?category=${event.categories[0]}` }]
             : []),
-          { name: event.title, url: `/events/${event.slug}` },
+          { name: l.title, url: `/events/${event.slug}` },
         ]}
       />
 
       <article>
-        {/* Hero header — magazine-style editorial */}
         <section className="border-b border-rule bg-cream-50">
           <div className="editorial-container pt-8 pb-10 md:pt-12 md:pb-16">
             <nav aria-label="Breadcrumb" className="mb-8 flex items-center gap-1.5 text-xs text-ink-500">
@@ -129,11 +146,10 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                   <ChevronRight className="h-3 w-3" />
                 </>
               )}
-              <span className="text-ink line-clamp-1">{event.title}</span>
+              <span className="text-ink line-clamp-1">{l.title}</span>
             </nav>
 
             <div className="grid gap-8 md:grid-cols-12 md:gap-12">
-              {/* Left column — meta + title */}
               <div className="md:col-span-7">
                 <div className="flex flex-wrap items-center gap-2">
                   {showAdminStatus && (
@@ -147,32 +163,36 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                   ))}
                 </div>
                 <h1 className="mt-5 font-display text-display-lg tracking-tight text-balance">
-                  {event.title}
+                  {l.title}
                 </h1>
                 <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-3 text-sm md:max-w-md">
-                  <Row label="When" value={formatEventDate(event.start_date, event.start_time)} mono />
+                  <Row
+                    label="When"
+                    value={formatEventDateWithLocale(event.start_date, event.start_time, locale)}
+                    mono
+                  />
                   <Row
                     label="Where"
-                    value={
+                    value={(
                       <span>
-                        {event.venue_name}
+                        {l.venue_name}
                         <span className="block text-xs text-ink-500 mt-0.5">
-                          {event.area_details}, {event.sub_area}
+                          {l.area_details}, {event.sub_area}
                         </span>
                       </span>
-                    }
+                    )}
                   />
                   <Row
                     label="Cost"
-                    value={
+                    value={(
                       <span className="font-mono uppercase tracking-wider">
-                        {formatPrice(event.price_type, event.price_note)}
+                        {formatPriceWithLocale(event.price_type, event.price_note, locale)}
                       </span>
-                    }
+                    )}
                   />
                   <Row
                     label="Organizer"
-                    value={
+                    value={(
                       <span>
                         {event.organizer.name}
                         {event.organizer.social_link && (
@@ -186,28 +206,27 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                           </a>
                         )}
                       </span>
-                    }
+                    )}
                   />
                 </div>
               </div>
 
-              {/* Right column — outbound CTA card (desktop only, hidden <md) */}
               <div className="hidden md:col-span-5 md:block">
                 <div className="sticky top-24 rounded-lg border border-rule bg-paper p-6 shadow-paper">
                   <div className="flex items-center gap-1.5 eyebrow">
                     <Calendar className="h-3 w-3" aria-hidden />
                     <time dateTime={event.start_date}>
-                      {formatEventDate(event.start_date, event.start_time)}
+                      {formatEventDateWithLocale(event.start_date, event.start_time, locale)}
                     </time>
                     {event.end_time && (
-                      <span className="text-ink-400">— {formatTime(event.end_time)}</span>
+                      <span className="text-ink-400">— {formatTimeWithLocale(event.end_time, locale)}</span>
                     )}
                   </div>
                   <h2 className="mt-4 font-display text-2xl leading-tight tracking-tight text-pretty">
                     Looks like a plan?
                   </h2>
                   <p className="mt-2 text-sm text-ink-500">
-                    We&rsquo;ll send you straight to the organizer&rsquo;s official page &mdash; registration,
+                    We&rsquo;ll send you straight to the organizer&rsquo;s official page — registration,
                     tickets, or contact info, hosted by them.
                   </p>
                   <div className="mt-5">
@@ -225,7 +244,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                   </p>
                   <Separator className="my-5" />
                   <ShareButtons
-                    title={event.title}
+                    title={l.title}
                     slug={event.slug}
                     startDate={event.start_date}
                   />
@@ -243,13 +262,12 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
           </div>
         </section>
 
-        {/* Poster image — condensed aspect on mobile to save vertical space */}
         <section className="border-b border-rule bg-background">
           <div className="editorial-container py-6 md:py-12">
             <div className="relative mx-auto aspect-[4/3] w-full max-w-5xl overflow-hidden rounded-lg border border-rule bg-cream-200 md:aspect-[16/9]">
               <Image
                 src={event.poster_url}
-                alt={event.title}
+                alt={l.poster_alt}
                 fill
                 sizes="(min-width: 1024px) 1024px, 100vw"
                 className="object-cover"
@@ -259,17 +277,13 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
           </div>
         </section>
 
-        {/* Body — description, audience tags, organizer, maps.
-            Add thumb-zone on mobile so the last bits aren't covered by the
-            sticky outbound CTA bar. */}
         <section className="border-b border-rule bg-background">
           <div className="editorial-container py-12 md:py-16 thumb-zone md:pb-16">
             <div className="grid gap-12 md:grid-cols-12">
-              {/* Main editorial column */}
               <div className="md:col-span-7">
                 <span className="eyebrow">What&rsquo;s it about</span>
                 <div className="prose mt-4 max-w-2xl font-display text-lg leading-relaxed text-ink text-pretty">
-                  {event.description.split("\n").map((p, i) => (
+                  {l.description.split("\n").map((p, i) => (
                     <p key={i} className="mb-4">{p}</p>
                   ))}
                 </div>
@@ -328,25 +342,24 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                 </div>
               </div>
 
-              {/* Sidebar — logistics */}
               <aside className="md:col-span-4 md:col-start-9">
                 <div className="sticky top-24 space-y-6">
                   <div className="rounded-lg border border-rule bg-paper p-5">
                     <span className="eyebrow">When</span>
                     <p className="mt-2 font-display text-lg text-ink">
-                      {formatEventDate(event.start_date, event.start_time)}
+                      {formatEventDateWithLocale(event.start_date, event.start_time, locale)}
                     </p>
                     {event.end_date && (
                       <p className="mt-1 text-sm text-ink-500">
-                        Through {formatEventDate(event.end_date, event.end_time ?? "00:00")}
+                        Through {formatEventDateWithLocale(event.end_date, event.end_time ?? "00:00", locale)}
                       </p>
                     )}
                   </div>
 
                   <div className="rounded-lg border border-rule bg-paper p-5">
                     <span className="eyebrow">Where</span>
-                    <p className="mt-2 font-display text-lg text-ink">{event.venue_name}</p>
-                    <p className="mt-1 text-sm text-ink-500">{event.area_details}</p>
+                    <p className="mt-2 font-display text-lg text-ink">{l.venue_name}</p>
+                    <p className="mt-1 text-sm text-ink-500">{l.area_details}</p>
                     <p className="text-sm text-ink-500">{event.sub_area}, {event.city}</p>
                     {event.maps_link && (
                       <a
@@ -365,7 +378,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                   <div className="rounded-lg border border-rule bg-paper p-5">
                     <span className="eyebrow">Cost</span>
                     <p className="mt-2 font-display text-2xl text-ink">
-                      {formatPrice(event.price_type, event.price_note)}
+                      {formatPriceWithLocale(event.price_type, event.price_note, locale)}
                     </p>
                     {event.price_note && event.price_type === "paid" && (
                       <p className="mt-1 text-sm text-ink-500">{event.price_note}</p>
@@ -377,7 +390,6 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
           </div>
         </section>
 
-        {/* Bottom outbound CTA */}
         <section className="bg-ink text-paper">
           <div className="editorial-container py-16 md:py-24">
             <div className="grid gap-10 md:grid-cols-12 md:items-center">
@@ -390,7 +402,7 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                 </h2>
                 <p className="mt-4 max-w-md text-paper/80 leading-relaxed">
                   We&rsquo;ll send you straight to {event.organizer.name}&rsquo;s official page.
-                  Pay or register there &mdash; we don&rsquo;t handle any of that.
+                  Pay or register there — we don&rsquo;t handle any of that.
                 </p>
               </div>
               <div className="md:col-span-4 md:col-start-9 md:flex md:justify-end">
@@ -407,7 +419,6 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
           </div>
         </section>
 
-        {/* Related events */}
         {related.length > 0 && (
           <section className="border-t border-rule bg-background">
             <div className="editorial-container py-16 md:py-20">
@@ -422,13 +433,11 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
                   See all →
                 </Link>
               </div>
-              {/* Mobile carousel */}
               <HorizontalSnap ariaLabel="Related events" itemWidth="min(85%, 320px)" showProgress>
                 {related.map((e) => (
                   <EventCard key={e.id} event={e} />
                 ))}
               </HorizontalSnap>
-              {/* Desktop grid */}
               <div className="hidden gap-6 sm:grid sm:grid-cols-2 lg:grid lg:grid-cols-3">
                 {related.map((e) => (
                   <EventCard key={e.id} event={e} />
@@ -438,7 +447,6 @@ export default async function EventDetailPage({ params, searchParams }: PageProp
           </section>
         )}
 
-        {/* Mobile-only sticky CTA bar — keeps outbound CTA in thumb-zone */}
         <EventMobileActions event={event} />
       </article>
     </DataSourceProvider>
