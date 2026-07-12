@@ -17,6 +17,13 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 const SERVER_TIMEOUT_MS = 4000;
 
 const isConfigured = () => Boolean(API_BASE_URL);
+const canUseDemoContent = () => !isConfigured();
+const EMPTY_LOOKUPS: Lookups = {
+  categories: [],
+  audience_tags: [],
+  sub_areas: [],
+  cities: [],
+};
 
 async function serverFetch<T>(path: string, init?: RequestInit): Promise<T | null> {
   if (!isConfigured()) return null;
@@ -103,6 +110,7 @@ export const serverGetEvents = unstable_cache(
     const path = `/events${qs ? `?${qs}` : ""}`;
     const live = await serverFetch<unknown[]>(path);
     if (live) return (live as unknown[]).map((e) => normalizeEvent(e));
+    if (!canUseDemoContent()) return [];
     // Local fallback: filtered FALLBACK_EVENTS.
     const today = new Date().toISOString().slice(0, 10);
     return FALLBACK_EVENTS.filter((e) => {
@@ -123,6 +131,7 @@ export const serverGetHeroEvents = unstable_cache(
   async (): Promise<Event[]> => {
     const live = await serverFetch<unknown[]>("/events/hero");
     if (live) return (live as unknown[]).map((e) => normalizeEvent(e));
+    if (!canUseDemoContent()) return [];
     const today = new Date().toISOString().slice(0, 10);
     const hero = FALLBACK_EVENTS.filter(
       (e) => e.status === "published" && e.show_in_hero && e.start_date >= today,
@@ -140,27 +149,27 @@ export const serverGetFeaturedEvents = unstable_cache(
   async (): Promise<Event[]> => {
     const live = await serverFetch<unknown[]>("/events?featured=true");
     if (live) return (live as unknown[]).map((e) => normalizeEvent(e));
+    if (!canUseDemoContent()) return [];
     return FALLBACK_EVENTS.filter((e) => e.status === "published" && e.is_featured);
   },
   ["serverGetFeaturedEvents"],
   { revalidate: 60, tags: ["events"] },
 );
 
-export const serverGetEventBySlug = unstable_cache(
-  async (slug: string): Promise<Event | null> => {
-    const live = await serverFetch<unknown>(`/events/${encodeURIComponent(slug)}`);
-    if (live) return normalizeEvent(live);
-    return FALLBACK_EVENTS.find((e) => e.slug === slug && e.status === "published") ?? null;
-  },
-  ["serverGetEventBySlug"],
-  { revalidate: 60, tags: ["events"] },
-);
+export async function serverGetEventBySlug(slug: string): Promise<Event | null> {
+  const live = await serverFetch<unknown>(`/events/${encodeURIComponent(slug)}`, {
+    cache: "no-store",
+  });
+  if (live) return normalizeEvent(live);
+  if (!canUseDemoContent()) return null;
+  return FALLBACK_EVENTS.find((e) => e.slug === slug && e.status === "published") ?? null;
+}
 
 export const serverGetLookups = unstable_cache(
   async (): Promise<Lookups> => {
     const live = await serverFetch<Lookups>("/lookups");
     if (live) return normalizeLookups(live);
-    return FALLBACK_LOOKUPS;
+    return canUseDemoContent() ? FALLBACK_LOOKUPS : EMPTY_LOOKUPS;
   },
   ["serverGetLookups"],
   { revalidate: 300, tags: ["lookups"] },

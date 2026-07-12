@@ -67,7 +67,12 @@ export function SubmissionReview({ id }: { id: string }) {
   async function apply(status: ReviewStatus) {
     if (!submission) return;
     setActing(true);
-    const res = await adminSetSubmissionReview(submission.id, status, note || undefined);
+    const res = await adminSetSubmissionReview(
+      submission.id,
+      status,
+      note || undefined,
+      status === "approved",
+    );
     setActing(false);
     if (res.data) {
       toast({

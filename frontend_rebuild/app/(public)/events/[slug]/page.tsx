@@ -28,7 +28,7 @@ import { serverGetEventBySlug, serverGetEvents } from "@/lib/api.server";
 import { formatEventDate, formatPrice, formatTime } from "@/lib/utils";
 import { CATEGORIES, AUDIENCE_TAGS } from "@/lib/categories";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 // Pre-generate static paths for fallback events at build time
 export async function generateStaticParams() {

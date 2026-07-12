@@ -24,6 +24,13 @@ import { FALLBACK_EVENTS, FALLBACK_LOOKUPS, FALLBACK_SUBMISSIONS } from "./fallb
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 const REQUEST_TIMEOUT_MS = 4000;
+const canUseDemoContent = () => !API_BASE_URL;
+const EMPTY_LOOKUPS: Lookups = {
+  categories: [],
+  audience_tags: [],
+  sub_areas: [],
+  cities: [],
+};
 
 /**
  * Resolve a relative path to a full URL.
@@ -286,6 +293,13 @@ export async function getEvents(filters: EventFilters = {}): Promise<ApiResponse
     const normalized = (live as unknown[]).map((e) => normalizeEvent(e as never)) as Event[];
     return { data: normalized, source: "live" };
   }
+  if (!canUseDemoContent()) {
+    return {
+      data: [],
+      source: "empty",
+      error: "Could not load live events.",
+    };
+  }
   const filtered = applyLocalFilters(FALLBACK_EVENTS, filters);
   filtered.sort((a, b) => a.start_date.localeCompare(b.start_date));
   return {
@@ -304,6 +318,9 @@ export async function getHeroEvents(): Promise<ApiResponse<Event[]>> {
   if (live) {
     return { data: (live as unknown[]).map((e) => normalizeEvent(e as never)) as Event[], source: "live" };
   }
+  if (!canUseDemoContent()) {
+    return { data: [], source: "empty", error: "Could not load hero events." };
+  }
   const today = new Date().toISOString().slice(0, 10);
   const hero = FALLBACK_EVENTS.filter(
     (e) => e.status === "published" && e.show_in_hero && e.start_date >= today,
@@ -320,6 +337,9 @@ export async function getHeroEvents(): Promise<ApiResponse<Event[]>> {
 export async function getEventBySlug(slug: string): Promise<ApiResponse<Event | null>> {
   const live = await tryFetch<unknown>(`/events/${encodeURIComponent(slug)}`);
   if (live) return { data: normalizeEvent(live as never), source: "live" };
+  if (!canUseDemoContent()) {
+    return { data: null, source: "empty", error: "Could not load live event." };
+  }
   const found = FALLBACK_EVENTS.find((e) => e.slug === slug && e.status === "published") ?? null;
   return {
     data: found,
@@ -367,7 +387,11 @@ function normalizeLookups(raw: Lookups): Lookups {
 export async function getLookups(): Promise<ApiResponse<Lookups>> {
   const live = await tryFetch<Lookups>(`/lookups`);
   if (live) return { data: normalizeLookups(live), source: "live" };
-  return { data: FALLBACK_LOOKUPS, source: "fallback" };
+  return {
+    data: canUseDemoContent() ? FALLBACK_LOOKUPS : EMPTY_LOOKUPS,
+    source: canUseDemoContent() ? "fallback" : "empty",
+    error: canUseDemoContent() ? undefined : "Could not load live lookups.",
+  };
 }
 
 // ──────────────────────────────────────────────────────────

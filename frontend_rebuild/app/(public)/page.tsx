@@ -87,12 +87,13 @@ export default async function HomePage() {
     serverGetHeroEvents(),
   ]);
   const home: HomePageConfig = localHome ?? DEFAULT_HOME_CONFIG;
-  const isLiveBackend = Boolean(process.env.NEXT_PUBLIC_API_BASE_URL);
 
   const today = new Date().toISOString().slice(0, 10);
   const filteredFeatured = featured.filter((e) => e.start_date >= today);
   const filteredHero = heroEvents.filter((e) => e.start_date >= today);
-  const isFallback = !isLiveBackend;
+  const hasAnyLiveLikeContent =
+    upcoming.length > 0 || filteredFeatured.length > 0 || filteredHero.length > 0;
+  const source = hasAnyLiveLikeContent ? "live" : "unknown";
   const lead = filteredFeatured[0];
   const secondaryFeatured = filteredFeatured.slice(1, 5);
 
@@ -189,7 +190,7 @@ export default async function HomePage() {
   };
 
   return (
-    <DataSourceProvider source={isFallback ? "fallback" : "live"}>
+    <DataSourceProvider source={source}>
       <PageViewTracker />
 
       {order.map((id) => (

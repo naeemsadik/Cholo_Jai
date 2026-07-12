@@ -193,11 +193,19 @@ export function AdminEvents() {
   }
 
   async function onReviewSubmission(sub: Submission, review_status: ReviewStatus) {
-    const res = await adminSetSubmissionReview(sub.id, review_status);
+    const res = await adminSetSubmissionReview(
+      sub.id,
+      review_status,
+      undefined,
+      review_status === "approved",
+    );
     if (res.data) {
       setSubmissions((prev) =>
         (prev ?? []).map((s) => (s.id === sub.id ? { ...s, review_status } : s)),
       );
+      if (review_status === "approved") {
+        await reload();
+      }
       toast({
         title:
           review_status === "approved"
