@@ -8,7 +8,7 @@
 # Services:
 #   - db          MySQL 8.0 with utf8mb4 + Asia/Dhaka timezone
 #   - backend     Laravel 11 php-fpm app (built from backend-laravel/)
-#   - web         nginx (custom image) serving PHP-FPM on :8000
+#   - web         nginx (custom image) serving PHP-FPM (Coolify proxy)
 #   - phpmyadmin  DB admin UI on 127.0.0.1:8080 (tunnel in via SSH)
 #
 # Fill in the secrets in `.env` next to this file (copy from
@@ -128,11 +128,10 @@ services:
     image: cholo-jai-web:latest
     container_name: cholo-jai-web
     restart: unless-stopped
-    ports:
-      # Coolify usually routes public traffic via Traefik labels. We also
-      # bind 8000 on the host so `curl http://localhost:8000/...` works
-      # directly from the VPS shell.
-      - '8000:80'
+    # No host port bind: Coolify/Traefik should route to this service
+    # internally. This avoids host-port collisions on shared VPS hosts.
+    expose:
+      - '80'
     volumes:
       - uploads_data:/var/www/html/storage/app/public:ro
     depends_on:
