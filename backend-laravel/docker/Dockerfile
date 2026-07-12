@@ -20,6 +20,7 @@ RUN apt-get update \
         unzip \
         default-mysql-client \
         curl \
+    && docker-php-ext-install pdo_mysql \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer --version=2.7.7 \
     && rm -rf /var/lib/apt/lists/*
 

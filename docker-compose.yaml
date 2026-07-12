@@ -80,6 +80,9 @@ services:
       DB_PASSWORD: '${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env or Coolify secrets}'
       DB_CHARSET: 'utf8mb4'
       DB_COLLATION: 'utf8mb4_unicode_ci'
+      MYSQL_DATABASE: '${MYSQL_DATABASE:-cholo_jai}'
+      MYSQL_USER: '${MYSQL_USER:-cholo}'
+      MYSQL_PASSWORD: '${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env or Coolify secrets}'
 
       # ── Cache / sessions / queue (file-backed; no Redis needed) ──
       CACHE_STORE: 'file'
@@ -135,8 +138,10 @@ services:
     volumes:
       - uploads_data:/var/www/html/storage/app/public:ro
     depends_on:
-      - backend
-      - db
+      backend:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     healthcheck:
       test:
         - CMD-SHELL
