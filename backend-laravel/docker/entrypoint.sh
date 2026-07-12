@@ -15,13 +15,23 @@ set -e
 
 cd /var/www/html
 
+# Guard against accidental instructional text in APP_KEY (e.g. "generate with ...")
+# which breaks dotenv parsing because of embedded whitespace.
+SAFE_APP_KEY="${APP_KEY:-}"
+case "$SAFE_APP_KEY" in
+    *[[:space:]]*)
+        echo "[entrypoint] APP_KEY contains whitespace; ignoring invalid value."
+        SAFE_APP_KEY=""
+        ;;
+esac
+
 # 1. Bootstrap .env from compose-injected env vars.
 if [ ! -f .env ]; then
     echo "[entrypoint] No .env present — synthesising one from the environment."
     {
         echo "APP_NAME=${APP_NAME:-CholoJai}"
         echo "APP_ENV=${APP_ENV:-production}"
-        echo "APP_KEY=${APP_KEY:-}"
+        echo "APP_KEY=${SAFE_APP_KEY}"
         echo "APP_DEBUG=${APP_DEBUG:-false}"
         echo "APP_URL=${APP_URL:-http://localhost:8000}"
         echo "DB_CONNECTION=mysql"
@@ -43,7 +53,7 @@ fi
 
 # 2. Generate APP_KEY if missing.
 if ! grep -q '^APP_KEY=base64' .env 2>/dev/null; then
-    if [ -z "$APP_KEY" ]; then
+    if [ -z "$SAFE_APP_KEY" ]; then
         echo "[entrypoint] APP_KEY missing — generating one."
         GEN=$(php artisan key:generate --force --show 2>/dev/null | tail -1 | sed 's/^APP_KEY=//')
         case "$GEN" in
