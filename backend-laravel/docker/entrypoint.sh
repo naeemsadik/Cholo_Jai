@@ -9,6 +9,7 @@ php artisan route:clear
 php artisan view:clear
 
 php artisan migrate --force --no-interaction
+php artisan db:seed --force --no-interaction
 php artisan storage:link || true
 
 # Volumes are mounted after the image is built, so repair their ownership here.

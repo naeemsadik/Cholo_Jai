@@ -48,8 +48,8 @@ class StoreSubmissionRequest extends FormRequest
 
             // Price
             'price_type' => ['required', Rule::enum(PriceType::class)],
-            'price_min' => ['nullable', 'numeric', 'min:0', 'required_if:price_type,paid'],
-            'price_max' => ['nullable', 'numeric', 'min:0', 'gte:price_min', 'required_if:price_type,paid'],
+            'price_min' => ['nullable', 'numeric', 'min:0'],
+            'price_max' => ['nullable', 'numeric', 'min:0', 'gte:price_min'],
             'price_note' => ['nullable', 'string', 'max:255', 'required_if:price_type,paid'],
 
             // Outbound

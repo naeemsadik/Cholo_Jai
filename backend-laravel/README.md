@@ -37,7 +37,7 @@ Laravel 11 + PHP 8.3 + MySQL 8 backend for the Cholo Jai event-discovery platfor
 
 The container's `docker/entrypoint.sh` waits for MySQL to be ready,
 generates `APP_KEY` if missing, runs migrations, and (optionally) seeds
-the database when `RUN_SEED=true`.
+the database when `SEED_DEMO_EVENTS=true`.
 
 ## Local development (Docker)
 

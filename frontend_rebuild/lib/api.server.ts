@@ -188,7 +188,7 @@ export interface BackendHomeResponse {
 }
 
 export async function serverGetHomeConfig(): Promise<BackendHomeResponse | null> {
-  const live = await serverFetch<BackendHomeResponse>("/api/cms/home");
+  const live = await serverFetch<BackendHomeResponse>("/cms/home");
   return live ?? null;
 }
 
@@ -204,11 +204,11 @@ export interface BackendCmsPageResponse {
 export async function serverGetCmsPage(slug: string): Promise<BackendCmsPageResponse | null> {
   // Resolve slug → numeric id by listing first.
   const list = await serverFetch<{ pages?: Array<{ id: number | string; slug: string }> } | Array<{ id: number | string; slug: string }>>(
-    "/api/cms/pages",
+    "/cms/pages",
   );
   const pages = Array.isArray(list) ? list : list?.pages ?? [];
   const found = pages.find((p) => p.slug === slug);
   if (!found) return null;
-  const detail = await serverFetch<BackendCmsPageResponse>(`/api/cms/pages/${found.id}`);
+  const detail = await serverFetch<BackendCmsPageResponse>(`/cms/pages/${found.id}`);
   return detail;
 }

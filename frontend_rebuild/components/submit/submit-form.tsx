@@ -148,6 +148,8 @@ export function SubmitForm() {
     if (s === 3) {
       if (form.categories.length === 0) err.categories = "Pick at least one";
       if (form.price_type === "paid" && !form.price_note.trim()) err.price_note = "Add a price";
+      if (!form.poster_url.trim()) err.poster_url = "Required";
+      if (form.poster_url && !/^https?:\/\//.test(form.poster_url)) err.poster_url = "Use a full URL";
       if (!form.outbound_link.trim()) err.outbound_link = "Required";
       try {
         if (form.outbound_link && !/^https?:\/\//.test(form.outbound_link)) {
@@ -178,6 +180,7 @@ export function SubmitForm() {
       title_bn: form.title_bn.trim() || undefined,
       description: form.description,
       description_bn: form.description_bn.trim() || undefined,
+      poster_url: form.poster_url,
       start_date: form.start_date,
       start_time: form.start_time,
       end_date: form.end_date || undefined,
@@ -196,7 +199,7 @@ export function SubmitForm() {
       organizer_name: form.organizer_name,
       organizer_phone: form.organizer_phone,
       organizer_email: form.organizer_email || undefined,
-      organizer_social_link: form.organizer_social_link || undefined,
+      organizer_website: form.organizer_social_link || undefined,
       outbound_link: form.outbound_link,
       expected_attendance: form.expected_attendance ? Number(form.expected_attendance) : undefined,
       wants_promotion_support: form.wants_promotion_support,
@@ -617,7 +620,7 @@ function Step3({
         </div>
       </Field>
 
-      <Field label="Poster image URL (optional)" hint="A square or 4:3 image works best. We'll host larger versions later.">
+      <Field label="Poster image URL" hint="Required. A square or 4:3 image works best." error={errors.poster_url}>
         <div className="relative">
           <ImageIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
           <Input

@@ -44,6 +44,7 @@ Route::get('/events', [PublicEventController::class, 'index']);
 Route::get('/events/hero', [PublicEventController::class, 'hero']);
 Route::get('/events/{slug}', [PublicEventController::class, 'show']);
 Route::get('/lookups', [LookupController::class, 'index']);
+Route::get('/cms/home', [AdminCmsHomeController::class, 'show']);
 Route::get('/cms/pages', [PublicCmsPageController::class, 'index']);
 Route::get('/cms/pages/{id}', [PublicCmsPageController::class, 'show'])->whereNumber('id');
 

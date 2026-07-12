@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/site/logo";
 import { Button } from "@/components/ui/button";
+import { adminLogout } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "cj_admin_sidebar_collapsed";
@@ -78,7 +79,8 @@ export function AdminSidebar({ pendingCount = 0, className }: AdminSidebarProps)
     });
   }
 
-  function logout() {
+  async function logout() {
+    await adminLogout();
     if (typeof window !== "undefined") sessionStorage.removeItem("cj_admin_token");
     router.push("/admin/login");
   }

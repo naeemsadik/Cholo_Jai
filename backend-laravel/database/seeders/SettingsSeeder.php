@@ -9,8 +9,7 @@ class SettingsSeeder extends Seeder
 {
     public function run(): void
     {
-        $setting = Setting::firstOrNew(['id' => 1]);
-        $setting->fill([
+        Setting::firstOrCreate(['id' => 1], [
             'site_name' => 'Cholo Jai',
             'tagline' => 'Find events worth going to',
             'default_city' => 'Dhaka',
@@ -19,6 +18,5 @@ class SettingsSeeder extends Seeder
             'pixels' => [],
             'meta_tags' => [],
         ]);
-        $setting->save();
     }
 }

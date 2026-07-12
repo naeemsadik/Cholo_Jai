@@ -12,7 +12,7 @@ import { adminLogin } from "@/lib/api";
 
 export function AdminLogin() {
   const router = useRouter();
-  const [email, setEmail] = React.useState("admin@cholojai.bd");
+  const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -24,7 +24,6 @@ export function AdminLogin() {
     const res = await adminLogin(email, password);
     setLoading(false);
     if (res.data?.token) {
-      // Demo mode — store a local-only flag
       if (typeof window !== "undefined") {
         sessionStorage.setItem("cj_admin_token", res.data.token);
       }
@@ -76,9 +75,6 @@ export function AdminLogin() {
             <Lock className="h-4 w-4" />
             {loading ? "Signing in…" : "Sign in"}
           </Button>
-          <p className="mt-4 text-[0.65rem] text-ink-500 text-center font-mono uppercase tracking-wider">
-            Demo: any non-empty credentials accepted
-          </p>
         </form>
 
         <div className="mt-6 text-center">

@@ -70,7 +70,7 @@ class CmsPageSeeder extends Seeder
                 ];
             }
 
-            CmsPage::query()->updateOrCreate(
+            CmsPage::query()->firstOrCreate(
                 ['slug' => $p['slug']],
                 [
                     'title' => $p['title'],

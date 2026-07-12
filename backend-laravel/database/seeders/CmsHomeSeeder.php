@@ -9,8 +9,7 @@ class CmsHomeSeeder extends Seeder
 {
     public function run(): void
     {
-        $home = CmsHome::firstOrNew(['id' => 1]);
-        $home->fill([
+        CmsHome::firstOrCreate(['id' => 1], [
             'order_section' => ['hero', 'upcoming', 'categories', 'submit_cta', 'footer'],
             'sections' => [
                 'hero' => [
@@ -40,6 +39,5 @@ class CmsHomeSeeder extends Seeder
                 ],
             ],
         ]);
-        $home->save();
     }
 }

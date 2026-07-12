@@ -22,20 +22,16 @@ import type {
 } from "./types";
 import { FALLBACK_EVENTS, FALLBACK_LOOKUPS, FALLBACK_SUBMISSIONS } from "./fallback-data";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 const REQUEST_TIMEOUT_MS = 4000;
 
 /**
  * Resolve a relative path to a full URL.
  *
- * - `/api/*` paths are Next.js API routes in THIS same project (app/api/*).
- *   Hit them as relative URLs so the client doesn't depend on the optional
- *   NEXT_PUBLIC_API_BASE_URL pointing to a separate backend.
- * - Other paths get API_BASE_URL prepended if set, otherwise returned as-is
- *   (relative — so the request still goes to the current origin).
+ * API_BASE_URL sends every backend route to Laravel. Without it, requests
+ * remain relative to the current Next.js origin.
  */
 function resolveUrl(url: string): string {
-  if (url.startsWith("/api/")) return url;
   return API_BASE_URL ? `${API_BASE_URL}${url}` : url;
 }
 
@@ -77,6 +73,7 @@ async function fetchWithTimeout(
 }
 
 async function tryFetch<T>(url: string, init?: RequestInit): Promise<T | null> {
+  if (!API_BASE_URL && typeof window === "undefined") return null;
   try {
     const res = await fetchWithTimeout(resolveUrl(url), init);
     if (!res.ok) {
@@ -344,6 +341,7 @@ export interface SubmitPayload {
   title_bn?: string;
   description: string;
   description_bn?: string;
+  poster_url: string;
   start_date: string;
   start_time: string;
   end_date?: string;
@@ -362,7 +360,7 @@ export interface SubmitPayload {
   organizer_name: string;
   organizer_phone: string;
   organizer_email?: string;
-  organizer_social_link?: string;
+  organizer_website?: string;
   outbound_link: string;
   expected_attendance?: number;
   wants_promotion_support: boolean;
@@ -384,7 +382,7 @@ export async function submitEvent(payload: SubmitPayload): Promise<ApiResponse<S
       name: payload.organizer_name,
       phone: payload.organizer_phone,
       email: payload.organizer_email,
-      social_link: payload.organizer_social_link,
+      social_link: payload.organizer_website,
     },
     review_status: "submitted",
     created_at: new Date().toISOString(),
@@ -541,6 +539,7 @@ function authHeaders(): Record<string, string> {
 }
 
 async function tryFetchWithAuth<T>(url: string, init?: RequestInit): Promise<T | null> {
+  if (!API_BASE_URL && typeof window === "undefined") return null;
   try {
     const res = await fetchWithTimeout(resolveUrl(url), {
       ...init,
@@ -575,20 +574,21 @@ export async function adminLogin(email: string, password: string): Promise<ApiRe
     body: JSON.stringify({ email, password }),
   });
   if (live) return { data: live, source: "live" };
-  if (email && password) {
-    return { data: { token: "demo-mode-token" }, source: "fallback" };
-  }
   return { data: null as never, source: "empty", error: "Invalid credentials." };
 }
 
+export async function adminLogout(): Promise<void> {
+  await tryFetchWithAuth(`/admin/logout`, { method: "POST" });
+}
+
 export async function getAdminSubmissions(): Promise<ApiResponse<Submission[]>> {
-  const live = await tryFetch<unknown[]>(`/admin/submissions`);
+  const live = await tryFetchWithAuth<unknown[]>(`/admin/submissions`);
   if (live) return { data: (live as unknown[]).map((s) => s as Submission), source: "live" };
   return { data: FALLBACK_SUBMISSIONS, source: "fallback" };
 }
 
 export async function getAdminEvents(): Promise<ApiResponse<Event[]>> {
-  const live = await tryFetch<unknown[]>(`/admin/events`);
+  const live = await tryFetchWithAuth<unknown[]>(`/admin/events`);
   if (live) {
     const normalized = (live as unknown[]).map((e) => normalizeEvent(e as never)) as Event[];
     return { data: normalized, source: "live" };
@@ -725,7 +725,7 @@ export async function adminUpdateSubmission(
   id: string,
   patch: Partial<Submission>,
 ): Promise<ApiResponse<Submission | null>> {
-  const live = await tryFetchWithAuth<Submission>(
+  const live = await tryFetchWithAuth<Submission | { submission: Submission }>(
     `/admin/submissions/${encodeURIComponent(id)}`,
     {
       method: "PATCH",
@@ -734,8 +734,9 @@ export async function adminUpdateSubmission(
     },
   );
   if (live) {
-    LOCAL_SUBMISSIONS.set(live.id, live);
-    return { data: live, source: "live" };
+    const submission = "submission" in live ? live.submission : live;
+    LOCAL_SUBMISSIONS.set(submission.id, submission);
+    return { data: submission, source: "live" };
   }
   const current = LOCAL_SUBMISSIONS.get(id);
   if (!current) return { data: null, source: "empty", error: "Submission not found." };

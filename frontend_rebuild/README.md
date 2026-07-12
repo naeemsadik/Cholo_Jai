@@ -86,8 +86,7 @@ All API calls go through `lib/api.ts`, which:
 
 ## Known follow-ups
 
-- Admin dashboard: actions (publish/unpublish/approve/reject) are visual-only; wire to backend
 - ICS endpoint doesn't respect Dhaka timezone yet
 - Add JSON-LD `Event` schema to detail pages
-- Add `/api/analytics/*` route handlers (currently no-op, calls go to backend)
-- Wire real auth (JWT) instead of sessionStorage token
+- Wire the poster picker to Laravel's `/admin/uploads` endpoint
+- Move analytics reset/export from the local Next.js store to Laravel

@@ -83,14 +83,14 @@ services:
       FILESYSTEM_DISK: 'public'
 
       # ── CORS / frontend origin ──
-      FRONTEND_ORIGIN: '${FRONTEND_ORIGIN:-http://localhost:3000}'
-      FRONTEND_URL: '${FRONTEND_URL:-http://localhost:3000}'
+      FRONTEND_ORIGIN: '${FRONTEND_ORIGIN:-https://cholo-jai-frontend.uiucomputerclub.com}'
+      FRONTEND_URL: '${FRONTEND_URL:-https://cholo-jai-frontend.uiucomputerclub.com}'
       SANCTUM_STATEFUL_DOMAINS: '${SANCTUM_STATEFUL_DOMAINS:-}'
       SESSION_DOMAIN: '${SESSION_DOMAIN:-}'
 
       # ── Admin seed (used by AdminUserSeeder on first migrate --seed) ───
-      ADMIN_EMAIL: 'naeemabdullahsadik@gmail.com'
-      ADMIN_PASSWORD: 'Admin@NaeemSadik2001'
+      ADMIN_EMAIL: '${ADMIN_EMAIL:-naeemabdullahsadik@gmail.com}'
+      ADMIN_PASSWORD: '${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in Coolify}'
 
       # ── Demo data seeder (off in prod by default) ──
       SEED_DEMO_EVENTS: '${SEED_DEMO_EVENTS:-false}'
@@ -98,8 +98,6 @@ services:
       # ── Public URLs Coolify will route to us ──
       PUBLIC_API_URL: '${SERVICE_URL_BACKEND:-http://localhost:8000}'
 
-      # ── First-boot flag — set true ONCE to seed demo data, then false ──
-      RUN_SEED: '${RUN_SEED:-false}'
     volumes:
       - uploads_data:/var/www/html/storage/app/public
     healthcheck:

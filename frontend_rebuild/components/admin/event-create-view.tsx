@@ -38,13 +38,6 @@ import {
 import type { Event, EventStatus, OutboundButtonLabel, PriceType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-interface EventCreateViewProps {
-  defaults?: {
-    default_outbound_label?: OutboundButtonLabel;
-    default_city?: string;
-  };
-}
-
 interface FormState {
   title: string;
   title_bn: string;
@@ -112,6 +105,7 @@ const EMPTY_FORM: FormState = {
 const REQUIRED_FIELDS: Array<keyof FormState> = [
   "title",
   "description",
+  "poster_url",
   "start_date",
   "start_time",
   "city",
@@ -123,7 +117,7 @@ const REQUIRED_FIELDS: Array<keyof FormState> = [
   "outbound_link",
 ];
 
-export function EventCreateView({ defaults }: EventCreateViewProps) {
+export function EventCreateView() {
   const router = useRouter();
   const [form, setForm] = React.useState<FormState>(EMPTY_FORM);
   const [submitting, setSubmitting] = React.useState<null | "draft" | "publish">(null);
