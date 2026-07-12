@@ -16,9 +16,7 @@ class UpdateCmsHomeRequest extends FormRequest
         return [
             'order' => ['required', 'array'],
             'sections' => ['required', 'array'],
-            'sections.*.type' => ['required', 'string', 'max:40'],
-            'sections.*.title' => ['nullable', 'string', 'max:200'],
-            'sections.*.config' => ['nullable', 'array'],
+            'sections.*' => ['required', 'array'],
         ];
     }
 }

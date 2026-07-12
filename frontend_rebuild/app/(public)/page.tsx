@@ -51,6 +51,56 @@ export const metadata: Metadata = {
   },
 };
 
+const KNOWN_HOME_SECTION_IDS: HomeSectionId[] = [
+  "hero",
+  "marquee",
+  "mobile_happening_today",
+  "weekend_forecast",
+  "featured_lead",
+  "sector_explorer",
+  "category_explorer",
+  "calendar",
+  "upcoming_grid",
+  "organizer_cta",
+  "newsletter",
+];
+
+function isHomeSectionId(value: string): value is HomeSectionId {
+  return KNOWN_HOME_SECTION_IDS.includes(value as HomeSectionId);
+}
+
+function normalizeHomeConfig(
+  backendHome: Awaited<ReturnType<typeof serverGetHomeConfig>>,
+  localHome: HomePageConfig | null,
+): HomePageConfig {
+  if (!backendHome || !backendHome.sections) {
+    return localHome ?? DEFAULT_HOME_CONFIG;
+  }
+
+  const order = Array.isArray(backendHome.order)
+    ? backendHome.order.filter(isHomeSectionId)
+    : [];
+
+  if (order.length === 0) {
+    return localHome ?? DEFAULT_HOME_CONFIG;
+  }
+
+  return {
+    ...DEFAULT_HOME_CONFIG,
+    ...(localHome ?? {}),
+    order,
+    sections: {
+      ...DEFAULT_HOME_CONFIG.sections,
+      ...(localHome?.sections ?? {}),
+      ...(backendHome.sections as Record<HomeSectionId, HomeSectionConfig>),
+    },
+    updated_at:
+      backendHome.updated_at ??
+      localHome?.updated_at ??
+      DEFAULT_HOME_CONFIG.updated_at,
+  };
+}
+
 function isEnabled(sections: Record<string, HomeSectionConfig>, id: HomeSectionId): boolean {
   const sec = sections[id];
   return Boolean(sec?.enabled ?? true);
@@ -90,18 +140,7 @@ export default async function HomePage() {
     serverGetFeaturedEvents(),
     serverGetHeroEvents(),
   ]);
-  const home: HomePageConfig =
-    backendHome && Array.isArray(backendHome.order) && backendHome.sections
-      ? {
-          ...DEFAULT_HOME_CONFIG,
-          order: backendHome.order as HomeSectionId[],
-          sections: {
-            ...DEFAULT_HOME_CONFIG.sections,
-            ...(backendHome.sections as Record<HomeSectionId, HomeSectionConfig>),
-          },
-          updated_at: backendHome.updated_at ?? DEFAULT_HOME_CONFIG.updated_at,
-        }
-      : localHome ?? DEFAULT_HOME_CONFIG;
+  const home = normalizeHomeConfig(backendHome, localHome);
 
   const today = new Date().toISOString().slice(0, 10);
   const filteredFeatured = featured.filter((e) => e.start_date >= today);
