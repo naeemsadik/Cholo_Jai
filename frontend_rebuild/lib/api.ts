@@ -164,6 +164,7 @@ function normalizeSubmission(raw: unknown): Submission {
 
   return {
     ...(r as unknown as Submission),
+    id: String(r.id ?? ""),
     city: cityName,
     sub_area: subAreaName,
     organizer: {
@@ -627,6 +628,18 @@ export async function getAdminSubmissions(): Promise<ApiResponse<Submission[]>> 
     };
   }
   return { data: FALLBACK_SUBMISSIONS, source: "fallback" };
+}
+
+export async function adminGetSubmissionById(
+  id: string,
+): Promise<ApiResponse<Submission | null>> {
+  const all = await getAdminSubmissions();
+  const submission = all.data.find((s) => s.id === String(id)) ?? null;
+  return {
+    data: submission,
+    source: submission ? all.source : "empty",
+    error: submission ? undefined : "Submission not found.",
+  };
 }
 
 export async function getAdminEvents(): Promise<ApiResponse<Event[]>> {

@@ -29,7 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import { ReviewPill } from "@/components/admin/status-pill";
 import { toast } from "@/components/ui/toaster";
 import {
-  getAdminSubmissions,
+  adminGetSubmissionById,
   adminSetSubmissionReview,
 } from "@/lib/api";
 import { formatEventDate, formatPrice, relativeTime } from "@/lib/utils";
@@ -49,11 +49,14 @@ export function SubmissionReview({ id }: { id: string }) {
   React.useEffect(() => {
     let mounted = true;
     (async () => {
-      const res = await getAdminSubmissions();
+      const res = await adminGetSubmissionById(id);
       if (!mounted) return;
-      const found = res.data.find((s) => s.id === id) ?? null;
-      setSubmission(found);
-      if (found) setChosenStatus(found.review_status === "submitted" ? "approved" : found.review_status);
+      setSubmission(res.data);
+      if (res.data) {
+        setChosenStatus(
+          res.data.review_status === "submitted" ? "approved" : res.data.review_status,
+        );
+      }
       setLoading(false);
     })();
     return () => {
