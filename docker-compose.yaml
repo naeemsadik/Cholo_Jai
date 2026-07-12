@@ -64,7 +64,7 @@ services:
       # ── Laravel core ──
       APP_NAME: 'CholoJai'
       APP_ENV: '${APP_ENV:-production}'
-      APP_KEY: '${APP_KEY:?generate with: docker compose run --rm backend php artisan key:generate --show}'
+      APP_KEY: '${APP_KEY:-}'
       APP_DEBUG: '${APP_DEBUG:-false}'
       APP_URL: '${APP_URL:-http://localhost:8000}'
       LOG_CHANNEL: 'stack'
