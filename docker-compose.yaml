@@ -174,7 +174,7 @@ services:
 
 volumes:
   mysql_data:
-    name: cholo-jai-mysql-v3
+    name: cholo-jai-mysql-v4
   uploads_data:
     name: cholo-jai-uploads
   laravel_logs:
