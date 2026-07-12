@@ -60,7 +60,7 @@ services:
       APP_ENV: 'production'
       APP_KEY: 'base64:8vTtXj5xwG+z8uGgF2z2m5E0lQk9bM2cW1QnHh3s7xQ='
       APP_DEBUG: '${APP_DEBUG:-false}'
-      APP_URL: '${APP_URL:-http://localhost:8000}'
+      APP_URL: '${SERVICE_URL_WEB:-http://localhost:8000}'
       LOG_CHANNEL: 'stderr'
       LOG_LEVEL: '${LOG_LEVEL:-info}'
       API_VERSION: '${API_VERSION:-0.1.0}'
@@ -96,7 +96,7 @@ services:
       SEED_DEMO_EVENTS: '${SEED_DEMO_EVENTS:-false}'
 
       # ── Public URLs Coolify will route to us ──
-      PUBLIC_API_URL: '${PUBLIC_API_URL:-http://localhost:8000}'
+      PUBLIC_API_URL: '${SERVICE_URL_WEB:-http://localhost:8000}'
 
       # ── First-boot flag — set true ONCE to seed demo data, then false ──
       RUN_SEED: '${RUN_SEED:-false}'
@@ -124,7 +124,6 @@ services:
       - '80'
     environment:
       # Coolify must route HTTP traffic to nginx, not PHP-FPM.
-      SERVICE_FQDN_WEB: '${SERVICE_FQDN_WEB:-localhost}'
       SERVICE_URL_WEB: '${SERVICE_URL_WEB:-http://localhost:8000}'
     volumes:
       - uploads_data:/var/www/html/storage/app/public:ro
