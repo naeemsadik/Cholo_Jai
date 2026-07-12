@@ -151,6 +151,43 @@ function normalizeEvent(raw: unknown): Event {
   };
 }
 
+function normalizeSubmission(raw: unknown): Submission {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const city = r.city as { name?: string } | string | null | undefined;
+  const subArea = r.sub_area as { name?: string } | string | null | undefined;
+  const org = r.organizer as
+    | { name?: string; phone?: string | null; email?: string | null; website?: string | null; social_link?: string | null }
+    | undefined;
+
+  const cityName = typeof city === "string" ? city : city?.name ?? "";
+  const subAreaName = typeof subArea === "string" ? subArea : subArea?.name ?? "";
+
+  return {
+    ...(r as unknown as Submission),
+    city: cityName,
+    sub_area: subAreaName,
+    organizer: {
+      name:
+        (r.organizer_name as string | undefined) ??
+        (org?.name as string | undefined) ??
+        "",
+      phone:
+        (r.organizer_phone as string | undefined) ??
+        (org?.phone as string | undefined) ??
+        "",
+      email:
+        (r.organizer_email as string | undefined) ??
+        (org?.email as string | undefined) ??
+        null,
+      social_link:
+        (r.organizer_social_link as string | undefined) ??
+        (org?.website as string | undefined) ??
+        (org?.social_link as string | undefined) ??
+        null,
+    },
+  };
+}
+
 /**
  * Frontend `Event` (nested organizer) → Laravel wire format (flat fields).
  * Used for admin POST/PATCH requests.
@@ -583,7 +620,12 @@ export async function adminLogout(): Promise<void> {
 
 export async function getAdminSubmissions(): Promise<ApiResponse<Submission[]>> {
   const live = await tryFetchWithAuth<unknown[]>(`/admin/submissions`);
-  if (live) return { data: (live as unknown[]).map((s) => s as Submission), source: "live" };
+  if (live) {
+    return {
+      data: (live as unknown[]).map((s) => normalizeSubmission(s)),
+      source: "live",
+    };
+  }
   return { data: FALLBACK_SUBMISSIONS, source: "fallback" };
 }
 
@@ -735,8 +777,9 @@ export async function adminUpdateSubmission(
   );
   if (live) {
     const submission = "submission" in live ? live.submission : live;
-    LOCAL_SUBMISSIONS.set(submission.id, submission);
-    return { data: submission, source: "live" };
+    const normalized = normalizeSubmission(submission);
+    LOCAL_SUBMISSIONS.set(normalized.id, normalized);
+    return { data: normalized, source: "live" };
   }
   const current = LOCAL_SUBMISSIONS.get(id);
   if (!current) return { data: null, source: "empty", error: "Submission not found." };
@@ -755,7 +798,9 @@ export async function adminSetSubmissionReview(
   if (note !== undefined) body.note = note;
   if (publish !== undefined) body.publish = publish;
 
-  const live = await tryFetchWithAuth<Submission>(
+  const live = await tryFetchWithAuth<
+    Submission | { submission: Submission; promoted_event_id?: string | null }
+  >(
     `/admin/submissions/${encodeURIComponent(id)}/review`,
     {
       method: "PATCH",
@@ -764,8 +809,10 @@ export async function adminSetSubmissionReview(
     },
   );
   if (live) {
-    LOCAL_SUBMISSIONS.set(live.id, live);
-    return { data: live, source: "live" };
+    const submission = "submission" in live ? live.submission : live;
+    const normalized = normalizeSubmission(submission);
+    LOCAL_SUBMISSIONS.set(normalized.id, normalized);
+    return { data: normalized, source: "live" };
   }
   const current = LOCAL_SUBMISSIONS.get(id);
   if (!current) return { data: null, source: "empty", error: "Submission not found." };

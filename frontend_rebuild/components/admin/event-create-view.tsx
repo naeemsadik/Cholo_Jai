@@ -379,6 +379,20 @@ export function EventCreateView() {
               Keep it short and Latin-only.
             </p>
           </div>
+
+          <Field
+            label="Poster / image URL"
+            required
+            fieldKey="poster_url"
+            error={errors.poster_url}
+            hint="Use a full hosted image URL."
+          >
+            <Input
+              value={form.poster_url}
+              onChange={(e) => patch("poster_url", e.target.value)}
+              placeholder="https://example.com/event-poster.jpg"
+            />
+          </Field>
         </section>
 
         <Separator className="my-10" />
@@ -797,19 +811,21 @@ function SectionHeader({ title, description }: { title: string; description?: st
 
 function Field({
   label,
+  fieldKey,
   required,
   hint,
   error,
   children,
 }: {
   label: string;
+  fieldKey?: string;
   required?: boolean;
   hint?: string;
   error?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div data-field={label}>
+    <div data-field={fieldKey ?? label}>
       <Label className="mb-1.5 inline-block">
         {label}
         {required && <span className="ml-1 text-ember-600">*</span>}

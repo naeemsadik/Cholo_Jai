@@ -286,20 +286,20 @@ function SubmissionPreview({ submission }: { submission: Submission }) {
             <span className="text-ink-500">{submission.area_details}</span>
           </DetailItem>
           <DetailItem icon={User} label="Organizer">
-            {submission.organizer.name}
-            {submission.organizer.phone && (
+            {submission.organizer?.name || "Unknown organizer"}
+            {submission.organizer?.phone && (
               <span className="block text-xs text-ink-500">
                 <Phone className="mr-1 inline h-3 w-3" />
                 {submission.organizer.phone}
               </span>
             )}
-            {submission.organizer.email && (
+            {submission.organizer?.email && (
               <span className="block text-xs text-ink-500">
                 <Mail className="mr-1 inline h-3 w-3" />
                 {submission.organizer.email}
               </span>
             )}
-            {submission.organizer.social_link && (
+            {submission.organizer?.social_link && (
               <span className="block text-xs text-ink-500">
                 <Instagram className="mr-1 inline h-3 w-3" />
                 social link

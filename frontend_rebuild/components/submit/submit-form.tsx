@@ -26,6 +26,16 @@ import { submitEvent, trackFormCompletion } from "@/lib/api";
 import { CATEGORIES, AUDIENCE_TAGS, SUB_AREAS_DHAKA } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
+const SAFE_CATEGORIES = CATEGORIES.filter(
+  (entry): entry is (typeof CATEGORIES)[number] => Boolean(entry?.slug && entry?.name),
+);
+const SAFE_AUDIENCE_TAGS = AUDIENCE_TAGS.filter(
+  (entry): entry is (typeof AUDIENCE_TAGS)[number] => Boolean(entry?.slug && entry?.name),
+);
+const SAFE_SUB_AREAS_DHAKA = SUB_AREAS_DHAKA.filter(
+  (entry): entry is (typeof SUB_AREAS_DHAKA)[number] => Boolean(entry),
+);
+
 interface FormState {
   // Organizer
   organizer_name: string;
@@ -510,7 +520,7 @@ function Step2({ form, errors, update, copyEnToBn }: StepProps & {
             className="flex h-11 w-full rounded-md border border-rule bg-paper px-3.5 py-2 text-sm focus-visible:outline-none focus-visible:border-ink focus-visible:ring-1 focus-visible:ring-ink"
           >
             <option value="">Pick one</option>
-            {SUB_AREAS_DHAKA.map((a) => (
+            {SAFE_SUB_AREAS_DHAKA.map((a) => (
               <option key={a} value={a}>{a}</option>
             ))}
           </select>
@@ -550,7 +560,7 @@ function Step3({
 
       <Field label="Categories" error={errors.categories} required hint="Pick one or more. Categories drive filtering.">
         <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((c) => (
+          {SAFE_CATEGORIES.map((c) => (
             <SelectChip
               key={c.slug}
               active={form.categories.includes(c.slug)}
@@ -565,7 +575,7 @@ function Step3({
 
       <Field label="Audience tags (optional)" hint="Help the right people find it.">
         <div className="flex flex-wrap gap-2">
-          {AUDIENCE_TAGS.map((t) => (
+          {SAFE_AUDIENCE_TAGS.map((t) => (
             <SelectChip
               key={t.slug}
               active={form.audience_tags.includes(t.slug)}
@@ -713,14 +723,14 @@ function Step4({ form }: { form: FormState }) {
         <ReviewRow
           label="Categories"
           value={form.categories.map((c) => (
-            <Badge key={c} variant="muted">{CATEGORIES.find((x) => x.slug === c)?.name ?? c}</Badge>
+            <Badge key={c} variant="muted">{SAFE_CATEGORIES.find((x) => x.slug === c)?.name ?? c}</Badge>
           ))}
         />
         {form.audience_tags.length > 0 && (
           <ReviewRow
             label="Audience"
             value={form.audience_tags.map((t) => (
-              <Badge key={t} variant="muted">{AUDIENCE_TAGS.find((x) => x.slug === t)?.name ?? t}</Badge>
+              <Badge key={t} variant="muted">{SAFE_AUDIENCE_TAGS.find((x) => x.slug === t)?.name ?? t}</Badge>
             ))}
           />
         )}

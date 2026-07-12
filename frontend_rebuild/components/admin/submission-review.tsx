@@ -169,19 +169,23 @@ export function SubmissionReview({ id }: { id: string }) {
           <Separator className="my-5" />
 
           <span className="eyebrow">Organizer</span>
-          <p className="mt-2 font-display text-lg text-ink">{submission.organizer.name}</p>
+          <p className="mt-2 font-display text-lg text-ink">
+            {submission.organizer?.name || "Unknown organizer"}
+          </p>
           <div className="mt-3 space-y-1.5 text-sm text-ink-700">
-            <a href={`tel:${submission.organizer.phone}`} className="flex items-center gap-2 hover:text-accent-700 transition-colors">
-              <Phone className="h-3.5 w-3.5 text-ink-400" />
-              {submission.organizer.phone}
-            </a>
-            {submission.organizer.email && (
+            {submission.organizer?.phone && (
+              <a href={`tel:${submission.organizer.phone}`} className="flex items-center gap-2 hover:text-accent-700 transition-colors">
+                <Phone className="h-3.5 w-3.5 text-ink-400" />
+                {submission.organizer.phone}
+              </a>
+            )}
+            {submission.organizer?.email && (
               <a href={`mailto:${submission.organizer.email}`} className="flex items-center gap-2 hover:text-accent-700 transition-colors">
                 <Mail className="h-3.5 w-3.5 text-ink-400" />
                 {submission.organizer.email}
               </a>
             )}
-            {submission.organizer.social_link && (
+            {submission.organizer?.social_link && (
               <a
                 href={submission.organizer.social_link}
                 target="_blank"

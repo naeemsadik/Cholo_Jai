@@ -6,6 +6,16 @@ import { categories, audienceTags, subAreas } from "@/lib/fallback-data";
 import { postSubmission, trackFormSubmission } from "@/lib/api";
 import { clsx } from "@/lib/util";
 
+const safeCategories = categories.filter(
+  (entry): entry is (typeof categories)[number] => Boolean(entry?.id && entry?.slug && entry?.name),
+);
+const safeAudienceTags = audienceTags.filter(
+  (entry): entry is (typeof audienceTags)[number] => Boolean(entry?.id && entry?.slug && entry?.name),
+);
+const safeSubAreas = subAreas.filter(
+  (entry): entry is (typeof subAreas)[number] => Boolean(entry?.id && entry?.name),
+);
+
 type Errors = Partial<Record<string, string>>;
 
 export function SubmitForm() {
@@ -289,7 +299,7 @@ export function SubmitForm() {
                       onChange={(e) => set("sub_area", e.target.value)}
                     >
                       <option value="">Select sector</option>
-                      {subAreas.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+                      {safeSubAreas.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
                     </select>
                   </Field>
                   <Field label="Google Maps URL" hint="optional, recommended">
@@ -298,7 +308,7 @@ export function SubmitForm() {
                 </div>
                 <Field label="Categories" required hint="Pick 1–3" error={errors.categories}>
                   <div className="flex flex-wrap gap-2">
-                    {categories.map((c) => (
+                    {safeCategories.map((c) => (
                       <button
                         key={c.id}
                         type="button"
@@ -314,7 +324,7 @@ export function SubmitForm() {
                 </Field>
                 <Field label="Audience tags" hint="optional">
                   <div className="flex flex-wrap gap-2">
-                    {audienceTags.map((t) => (
+                    {safeAudienceTags.map((t) => (
                       <button
                         key={t.id}
                         type="button"

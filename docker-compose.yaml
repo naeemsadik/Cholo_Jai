@@ -83,8 +83,8 @@ services:
       FILESYSTEM_DISK: 'public'
 
       # ── CORS / frontend origin ──
-      FRONTEND_ORIGIN: '${FRONTEND_ORIGIN:-https://cholo-jai-frontend.uiucomputerclub.com, https://cholo-jai-bd.vercel.app/}'
-      FRONTEND_URL: '${FRONTEND_URL:-https://cholo-jai-frontend.uiucomputerclub.com, https://cholo-jai-bd.vercel.app}'
+      FRONTEND_ORIGIN: '${FRONTEND_ORIGIN:-https://cholo-jai-bd.vercel.app}'
+      FRONTEND_URL: '${FRONTEND_URL:-https://cholo-jai-bd.vercel.app}'
       SANCTUM_STATEFUL_DOMAINS: '${SANCTUM_STATEFUL_DOMAINS:-}'
       SESSION_DOMAIN: '${SESSION_DOMAIN:-}'
 
