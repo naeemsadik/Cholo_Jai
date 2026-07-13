@@ -40,7 +40,9 @@ import {
   adminUpdateEvent,
   adminSetEventStatus,
   adminDeleteEvent,
+  adminUploadImage,
 } from "@/lib/api";
+import { PosterUploader } from "@/components/ui/poster-uploader";
 import { formatEventDate, relativeTime } from "@/lib/utils";
 import {
   STATUS_LABEL,
@@ -291,11 +293,11 @@ export function EventEditView({ slug }: { slug: string }) {
                   rows={8}
                 />
               </Field>
-              <Field label="Poster URL" hint="Hosted URL · uploads post-MVP">
-                <Input
+              <Field label="Poster image" hint="Upload a file or provide a web URL.">
+                <PosterUploader
                   value={d.poster_url ?? ""}
-                  onChange={(e) => patch("poster_url", e.target.value)}
-                  placeholder="https://…"
+                  onChange={(url) => patch("poster_url", url)}
+                  onUpload={adminUploadImage}
                 />
               </Field>
               <Field label="Categories" hint="One or more">

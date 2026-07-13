@@ -66,4 +66,27 @@ class SubmissionController extends Controller
             201
         );
     }
+
+    /**
+     * POST /submissions/upload — public upload of image files.
+     */
+    public function upload(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'], // Max 5MB
+        ]);
+
+        $file = $request->file('file') ?? $request->file('image');
+        if (! $file) {
+            return response()->json(['error' => 'No file uploaded'], 400);
+        }
+
+        // Non-guessable path: uploads/public/YYYY/MM/{hash}.{ext}
+        $path = $file->store('uploads/public/'.now()->format('Y/m'), 'public');
+
+        // Compute a stable URL
+        $url = rtrim((string) config('app.url'), '/').'/storage/'.$path;
+
+        return response()->json(['url' => $url]);
+    }
 }

@@ -27,7 +27,8 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/toaster";
-import { adminCreateEvent, adminGetSettings } from "@/lib/api";
+import { adminCreateEvent, adminGetSettings, adminUploadImage } from "@/lib/api";
+import { PosterUploader } from "@/components/ui/poster-uploader";
 import { slugify } from "@/lib/utils";
 import {
   CATEGORIES,
@@ -381,16 +382,16 @@ export function EventCreateView() {
           </div>
 
           <Field
-            label="Poster / image URL"
+            label="Poster / image"
             required
             fieldKey="poster_url"
-            error={errors.poster_url}
-            hint="Use a full hosted image URL."
+            hint="Upload a file or provide a web URL."
           >
-            <Input
+            <PosterUploader
               value={form.poster_url}
-              onChange={(e) => patch("poster_url", e.target.value)}
-              placeholder="https://example.com/event-poster.jpg"
+              onChange={(url) => patch("poster_url", url)}
+              onUpload={adminUploadImage}
+              error={errors.poster_url}
             />
           </Field>
         </section>

@@ -22,7 +22,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { SelectChip } from "@/components/ui/badge-chip";
 import { toast } from "@/components/ui/toaster";
-import { submitEvent, trackFormCompletion } from "@/lib/api";
+import { submitEvent, trackFormCompletion, publicUploadImage } from "@/lib/api";
+import { PosterUploader } from "@/components/ui/poster-uploader";
 import { CATEGORIES, AUDIENCE_TAGS, SUB_AREAS_DHAKA } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
@@ -630,17 +631,13 @@ function Step3({
         </div>
       </Field>
 
-      <Field label="Poster image URL" hint="Required. A square or 4:3 image works best." error={errors.poster_url}>
-        <div className="relative">
-          <ImageIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-          <Input
-            type="url"
-            value={form.poster_url}
-            onChange={(e) => update("poster_url", e.target.value)}
-            placeholder="https://…"
-            className="pl-10"
-          />
-        </div>
+      <Field label="Poster image" hint="Required. A square or 4:3 image works best.">
+        <PosterUploader
+          value={form.poster_url}
+          onChange={(url) => update("poster_url", url)}
+          onUpload={publicUploadImage}
+          error={errors.poster_url}
+        />
       </Field>
 
       <Field label="Expected attendance (optional)" hint="Helps us gauge reach and recommend slots.">

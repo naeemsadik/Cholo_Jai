@@ -1278,3 +1278,71 @@ export async function adminUpdateCmsPage(
     };
   }
 }
+
+export async function publicUploadImage(file: File): Promise<ApiResponse<{ url: string }>> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const url = API_BASE_URL
+    ? `${API_BASE_URL}/submissions/upload`
+    : `/api/submissions/upload`;
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      return {
+        data: null as never,
+        source: "empty",
+        error: errBody.error ?? `Upload failed (${res.status}).`,
+      };
+    }
+    const data = await res.json();
+    return { data, source: "live" };
+  } catch (err) {
+    return {
+      data: null as never,
+      source: "empty",
+      error: "Upload failed due to network error.",
+    };
+  }
+}
+
+export async function adminUploadImage(file: File): Promise<ApiResponse<{ url: string }>> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const url = API_BASE_URL
+    ? `${API_BASE_URL}/admin/uploads`
+    : `/api/admin/uploads`;
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        ...authHeaders(),
+      },
+      body: formData,
+    });
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      return {
+        data: null as never,
+        source: "empty",
+        error: errBody.error ?? `Upload failed (${res.status}).`,
+      };
+    }
+    const data = await res.json();
+    return { data, source: "live" };
+  } catch (err) {
+    return {
+      data: null as never,
+      source: "empty",
+      error: "Upload failed due to network error.",
+    };
+  }
+}
+

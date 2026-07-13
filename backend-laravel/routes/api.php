@@ -36,6 +36,7 @@ Route::middleware('throttle:analytics')->group(function () {
 // ─── Public writes (rate-limited) ───
 Route::middleware('throttle:submission')->group(function () {
     Route::post('/submissions', [PublicSubmissionController::class, 'store']);
+    Route::post('/submissions/upload', [PublicSubmissionController::class, 'upload']);
     Route::post('/subscribers', [PublicSubscriberController::class, 'store']);
 });
 
